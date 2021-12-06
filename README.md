@@ -22,3 +22,17 @@ By doing this I wish to learn the following:
 * Write high level performant code in a function language with respect to
   low-level architechtural properties, such as thread divergence and cache
   coalescence.
+
+## Time schedule
+
+| Week | Task                                                                  |
+|-----:|:----------------------------------------------------------------------|
+|    6 | Read paper                                                            |
+|    7 | Plan datastructure                                                    |
+|    8 |                                                                       |
+|    9 |                                                                       |
+|   10 |                                                                       |
+|   11 |                                                                       |
+|   12 |                                                                       |
+|   13 |                                                                       |
+|   14 | Profit                                                                |
