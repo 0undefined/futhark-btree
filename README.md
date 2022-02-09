@@ -28,9 +28,9 @@ By doing this I wish to learn the following:
 | Week | Task                                                                  |
 |-----:|:----------------------------------------------------------------------|
 |    6 | Read paper                                                            |
-|    7 | Plan datastructure                                                    |
-|    8 |                                                                       |
-|    9 |                                                                       |
+|    7 | Recursive datastructure as a flat array                               |
+|    8 | Coalescence                                                           |
+|    9 | Merge/Split                                                           |
 |   10 |                                                                       |
 |   11 |                                                                       |
 |   12 |                                                                       |
