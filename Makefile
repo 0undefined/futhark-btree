@@ -1,7 +1,17 @@
-CC=futhark
+FUTC=futhark
 
-debug:
-	$(CC) c src/btree.fut
+.PHONY: pkg
 
-build:
-	$(CC) opencl src/btree.fut
+debug: pkg
+	$(FUTC) c src/btree.fut
+
+build: pkg
+	$(FUTC) opencl src/btree.fut
+
+pkg: lib/github.com/diku-dk/sorts/radix_sort.fut
+	$(FUTC) pkg sync
+
+lib/github.com/diku-dk/sorts/radix_sort.fut: futhark.pkg
+
+futhark.pkg:
+	$(FUTC) pkg add github.com/diku-dk/sorts

@@ -1,2 +1,4 @@
 src/btree
 *.c
+futhark.pkg
+lib
