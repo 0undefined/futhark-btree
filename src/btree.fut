@@ -1,25 +1,24 @@
+open import "../lib/github.com/diku-dk/sorts/radix_sort"
 let degree : i64 = 128
-let nvals  : i64 = degree * 2 - 1
-let nkeys  : i64 = degree * 2
+let v : i64 = degree * 2 - 1
+let k : i64 = degree * 2
 
-type node [k] [c] 'v =
-   #node {size: i64, keys: [k]i64, vals: [k]v, children: [c]i64}
- | #leaf {size: i64, keys: [k]i64, vals: [k]v}
+type node 't = {size: i64, keys: [v]i64, vals: [v]t, children: [k]i64}
 
 
 -- The number of elements containable in a tree is (2*t)^h - 1
-let tree_size (degree: i64) (height: i64) =
-  degree |> (*2) |> (**height) |> (+) (-1)
+let tree_size (degree: i64) (height: i64) = (degree * 2)**height |> (+) (-1)
 
 
-let node_new (degree: i64) =
-  let numkeys = degree * 2 - 1
-  let keys    = iota numkeys
-  in #leaf {size=0i64, keys=keys, vals=replicate numkeys 0i64} -- :> node [numkeys] [numkeys] i64
+let node_new 'a (nil: a) : node a =
+  let keys    = iota v
+  in {size=0i64, keys=keys, vals=replicate v nil, children=replicate k (-1)}
 
 
-let construct_tree_from_keyvals 'a [n]
-  (keys: [n]i64)
-  (vals: [n]a) : [](node [0] [0] a) =
-    let root : node = node_new degree
-  in root
+def construct_tree_from_keyvals 'a [n] (nil: a) (keys: [n]i64) (vals: [n]a) : [](node a) =
+    let root = node_new nil
+  in [root]
+
+
+entry main [n] (keys: [n]i64) (vals: [n]i64) : []i64 =
+  []
