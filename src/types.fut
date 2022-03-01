@@ -3,7 +3,7 @@ type datatype = i64
 
 def nilval : i64 = 0i64
 -- def degree : i64 = 32   -- aka. `t` in CLRS
-def degree : i64 = 8   -- aka. `t` in CLRS
+def degree : i64 = 32   -- aka. `t` in CLRS
 
 -- All nodes (except the root node) must contain a number of k keys
 --   such that  t - 1 ≤ k ≤ 2t - 1.

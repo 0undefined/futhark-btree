@@ -1,15 +1,6 @@
--- ==
--- entry: construct_tree_from_keyvals_bench
--- random input {[100]i64 [100]i64} auto output
--- random input {[1000]i64 [1000]i64} auto output
--- random input {[10000]i64 [10000]i64} auto output
--- random input {[100000]i64 [100000]i64} auto output
--- random input {[1000000]i64 [1000000]i64} auto output
--- random input {[10000000]i64 [10000000]i64} auto output
 open import "../lib/github.com/diku-dk/sorts/radix_sort"
 open import "types"
 open import "btree-ops"
-
 
 let logt (t : i64) : (i64->f64) = (\x -> (f64.log <| f64.i64 x) / (f64.log <| f64.i64 t))
 
@@ -60,7 +51,7 @@ let tree_height [n] (root : [n]node) : i64 =
 
 
 -- Assume [](keys,vals) are already sorted by key
-def construct_tree_from_keyvals [n] (nil: datatype) (keys: [n]i64) (vals: [n]datatype) : []node =
+def node_list_from_keyvalues [n] (nil: datatype) (keys: [n]i64) (vals: [n]datatype) : []node =
   let root = node_new nil in
   if n <= k then
     -- Insert all elements into the new root node
@@ -101,10 +92,6 @@ def construct_tree_from_keyvals [n] (nil: datatype) (keys: [n]i64) (vals: [n]dat
     )
 
 
-entry construct_tree_from_keyvals_bench [n] (keys: [n]i64) (vals: [n]datatype) : i64 =
-  construct_tree_from_keyvals (-1) keys vals |> length
-
-
 def node_from_tuple (n: node) : (bool, i64, i64, [k]i64, [k]datatype, [c]i64) =
   let (keys, vals) = unzip n.keys
   in (n.is_leaf, n.parent, n.size, keys, vals, n.children)
@@ -115,4 +102,4 @@ entry main [n] (keys: [n]i64) (vals: [n]datatype) : [](bool, i64, i64, [k]i64, [
      zip keys vals
      |> radix_sort_by_key (.0) (i64.num_bits) (i64.get_bit)
      |> unzip
-   in construct_tree_from_keyvals nilval sorted_k sorted_v |> map node_from_tuple
+   in node_list_from_keyvalues nilval sorted_k sorted_v |> map node_from_tuple
