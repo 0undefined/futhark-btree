@@ -82,20 +82,23 @@ def construct_tree_from_keyvals [n] (nil: datatype) (keys: [n]i64) (vals: [n]dat
              && i >= degree - 1 do
         (n / (i-1), n % (i-1), i - 1)
 
-    in let btree_new' (ds : i64) (sz : i64) : node = {
+
+    in tabulate n_nodes (\i ->
+      let (partsize,dropsize) =
+        if i < remainder then -- the first nodes with index smaller than `remainder` should
+                              -- have an extra item
+          (n_items + 1, i * (n_items+1))
+        else
+          (n_items, remainder * (n_items+1) + (i-remainder) * n_items)
+
+      in {
         is_leaf = true,
         parent  = (-1),
-        size    = sz,
-        keys    = scatter (replicate k (-1,nil)) (iota sz) (zip keys vals |> drop ds |> take sz),
+        size    = partsize,
+        keys    = scatter (replicate k (-1,nil)) (iota partsize) (zip keys vals |> drop dropsize |> take partsize),
         children = replicate c (-1)
       }
-
-    in let lhs_dropsize (i : i64) = i * (n_items + 1)
-    in let rhs_dropsize (i : i64) = i * n_items + remainder * (n_items + 1)
-    in let lhs_tree = tabulate remainder           (\i -> btree_new' (n_items + 1) (lhs_dropsize i))
-    in let rhs_tree = tabulate (n_nodes-remainder) (\i -> btree_new'  n_items      (rhs_dropsize i))
-    -- TODO: Merge the trees!
-    in lhs_tree ++ rhs_tree
+    )
 
 
 entry construct_tree_from_keyvals_bench [n] (keys: [n]i64) (vals: [n]datatype) : i64 =
