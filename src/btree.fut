@@ -1,3 +1,11 @@
+-- ==
+-- entry: construct_tree_from_keyvals_bench
+-- random input {[100]i64 [100]i64} auto output
+-- random input {[1000]i64 [1000]i64} auto output
+-- random input {[10000]i64 [10000]i64} auto output
+-- random input {[100000]i64 [100000]i64} auto output
+-- random input {[1000000]i64 [1000000]i64} auto output
+-- random input {[10000000]i64 [10000000]i64} auto output
 open import "../lib/github.com/diku-dk/sorts/radix_sort"
 open import "types"
 open import "btree-ops"
