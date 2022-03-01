@@ -101,6 +101,10 @@ def construct_tree_from_keyvals [n] (nil: datatype) (keys: [n]i64) (vals: [n]dat
     )
 
 
+entry construct_tree_from_keyvals_bench [n] (keys: [n]i64) (vals: [n]datatype) : i64 =
+  construct_tree_from_keyvals (-1) keys vals |> length
+
+
 def node_from_tuple (n: node) : (bool, i64, i64, [k]i64, [k]datatype, [c]i64) =
   let (keys, vals) = unzip n.keys
   in (n.is_leaf, n.parent, n.size, keys, vals, n.children)
