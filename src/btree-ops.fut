@@ -1,7 +1,8 @@
-def fuse (n0 : node) (n1 : node) : node =
-  let splitter_key ≤ any key ϵ n0
-                   ≥ any key ϵ n1
-  in n0 ++ n1
+open import "types"
+-- def fuse (n0 : node) (n1 : node) : node =
+--   let splitter_key ≤ any key ϵ n0
+--                    ≥ any key ϵ n1
+--   in n0 ++ n1
 
 -- split a tree using splitter key `x`
 -- t: tree
