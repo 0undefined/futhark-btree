@@ -35,16 +35,19 @@ let min_height (n : i64) : i64 =
 let node_new (nil: datatype) : node =
   let keys = replicate k nil |> zip <| iota k
   in { is_leaf  = true
-     , parent   = (-1)
+     , parent   = #null
      , size     = 0i64
      , keys     = keys
-     , children = replicate c (-1)
+     , children = replicate c #null
      }
 
 
-let tree_height [n] (root : [n]node) : i64 =
-  (.0) <| loop (i, r) = (0, head root) while !r.is_leaf
-    do (i + 1, root[head r.children])
+let tree_height [n] (tree : [n]node) : i64 =
+  (.0) <| loop (i, r) = (0, head tree) while !r.is_leaf
+    do let child = head r.children
+       in match child
+       case #ptr p -> (i + 1, tree[p])
+       case #null -> (i+1,tree[0]) -- this case should never be reached
 
 
 -- let min_tree_size (n: i64) : i64
@@ -84,17 +87,16 @@ def node_list_from_keyvalues [n] (nil: datatype) (keys: [n]i64) (vals: [n]dataty
 
       in {
         is_leaf = true,
-        parent  = (-1),
+        parent  = #null,
         size    = partsize,
         keys    = scatter (replicate k (-1,nil)) (iota partsize) (zip keys vals |> drop dropsize |> take partsize),
-        children = replicate c (-1)
+        children = replicate c #null
       }
     )
 
-
 def node_from_tuple (n: node) : (bool, i64, i64, [k]i64, [k]datatype, [c]i64) =
   let (keys, vals) = unzip n.keys
-  in (n.is_leaf, n.parent, n.size, keys, vals, n.children)
+  in (n.is_leaf, ptrval n.parent, n.size, keys, vals, map ptrval n.children)
 
 
 entry main [n] (keys: [n]i64) (vals: [n]datatype) : [](bool, i64, i64, [k]i64, [k]datatype, [c]i64) =
