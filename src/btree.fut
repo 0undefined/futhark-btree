@@ -2,7 +2,7 @@ open import "../lib/github.com/diku-dk/sorts/radix_sort"
 open import "types"
 open import "btree-ops"
 
-let logt (t : i64) : (i64->f64) = (\x -> (f64.log <| f64.i64 x) / (f64.log <| f64.i64 t))
+let logt (t : i64) : (i64->f64) = (\x -> (/) (f64.i64 x |> f64.log) (f64.i64 t |> f64.log))
 
 -- The minimum number of nodes in a tree is (2*t)^h - 1
 let min_tree_size (height: i64) = 2 * degree**height |> (+) (-1)
@@ -77,6 +77,7 @@ def node_list_from_keyvalues [n] (nil: datatype) (keys: [n]i64) (vals: [n]dataty
         (n / (i-1), n % (i-1), i - 1)
 
 
+    in let keyvals = zip keys vals
     in tabulate n_nodes (\i ->
       let (partsize,dropsize) =
         if i < remainder then -- the first nodes with index smaller than `remainder` should
@@ -85,13 +86,10 @@ def node_list_from_keyvalues [n] (nil: datatype) (keys: [n]i64) (vals: [n]dataty
         else
           (n_items, remainder * (n_items+1) + (i-remainder) * n_items)
 
-      in {
-        is_leaf = true,
-        parent  = #null,
-        size    = partsize,
-        keys    = scatter (replicate k (-1,nil)) (iota partsize) (zip keys vals |> drop dropsize |> take partsize),
-        children = replicate c #null
-      }
+      in node_new nil with size = partsize
+                      with keys = scatter (replicate k (-1,nil))
+                                          (iota partsize)
+                                          (drop dropsize keyvals |> take partsize)
     )
 
 def node_from_tuple (n: node) : (bool, i64, i64, [k]i64, [k]datatype, [c]i64) =
