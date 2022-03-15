@@ -89,8 +89,3 @@ entry main [n] (keys: [n]i64) (vals: [n]datatype) : [](bool, i64, i64, [k]i64, [
      |> radix_sort_by_key (.0) (i64.num_bits) (i64.get_bit)
      |> unzip
    in node_list_from_keyvalues nilval sorted_k sorted_v |> map node_from_tuple
-
-def testtree (n : i64) : []node =
-  let kk = iota n
-  let vv = map (*2) kk
-  in node_list_from_keyvalues (-1) kk vv
