@@ -2,8 +2,7 @@
 type datatype = i64
 
 def nilval : i64 = 0i64
--- def degree : i64 = 32   -- aka. `t` in CLRS
-def degree : i64 = 32   -- aka. `t` in CLRS
+def degree : i64 = 4   -- aka. `t` in CLRS
 
 -- All nodes (except the root node) must contain a number of k keys
 --   such that  t - 1 ≤ k ≤ 2t - 1.
@@ -32,3 +31,25 @@ def ptrval (p : ptr) : i64 =
   match p
   case #null  -> (-1)
   case #ptr q -> q
+
+let newchildarr () : *[c]ptr = replicate c #null
+let newkeyarr (nil : datatype) = replicate k nil |> zip <| replicate k (-1i64)
+
+let node_new (nil: datatype) : node =
+  { is_leaf  = true
+  , parent   = #null
+  , size     = 0i64
+  , keys     = newkeyarr nil
+  , children = newchildarr ()
+  }
+
+-- Returns the rank (height) from a given node in the tree
+-- with i=0 returns the rank of the whole tree.
+def tree_rank [n] (tree : [n]node) (j : i64) : i64 =
+  (.0) <| loop (i, r) = (0, tree[j]) while !r.is_leaf
+    do let child = head r.children
+       in match child
+       case #ptr p -> (i + 1, tree[p])
+       case #null  -> (i + 1, tree[0]) -- this case should never be reached
+                                       -- also, this case results in an infinite
+                                       -- loop on purpose.

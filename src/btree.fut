@@ -2,24 +2,24 @@ open import "../lib/github.com/diku-dk/sorts/radix_sort"
 open import "types"
 open import "btree-ops"
 
-let logt (t : i64) : (i64->f64) = (\x -> (/) (f64.i64 x |> f64.log) (f64.i64 t |> f64.log))
+def logt (t : i64) : (i64->f64) = (\x -> (/) (f64.i64 x |> f64.log) (f64.i64 t |> f64.log))
 
 -- The minimum number of nodes in a tree is (2*t)^h - 1
-let min_tree_size (height: i64) = 2 * degree**height |> (+) (-1)
+def min_tree_size (height: i64) = 2 * degree**height |> (+) (-1)
 
 -- Upper bound on height of a tree with `n` keys
 -- TODO: Maybe use `ceil` ?
-let worst_case_height n = i64.f64 <-< f64.round <| logt degree <| (n + 1) / 2
+def worst_case_height n = i64.f64 <-< f64.round <| logt degree <| (n + 1) / 2
 
 -- Upper bound on nodes of a tree with `n` keys
-let worst_case_size (n : i64) = worst_case_height n |> min_tree_size
+def worst_case_size (n : i64) = worst_case_height n |> min_tree_size
 
 -- Returns a "somewhat optimal" height of a tree that must be able to contain a
 -- minimum of `n` keys
 --  The goal is to get an idea of what hight is optimal in order to contain `n`
 --  keys. Keeping in mind that each node can contain an interval of `t-1` up until
 --  `2t` keys.
-let min_height (n : i64) : i64 =
+def min_height (n : i64) : i64 =
   let max_height = worst_case_height n
   let range      = degree - 1 ... degree * 2 -- the min and max number of elems of a node
   -- Create a list of
@@ -32,29 +32,14 @@ let min_height (n : i64) : i64 =
   |> head               -- get the smallest height that is able to contain `n` keys
   |> (.1)
 
-let node_new (nil: datatype) : node =
-  let keys = replicate k nil |> zip <| iota k
-  in { is_leaf  = true
-     , parent   = #null
-     , size     = 0i64
-     , keys     = keys
-     , children = replicate c #null
-     }
 
-
-let tree_height [n] (tree : [n]node) : i64 =
-  (.0) <| loop (i, r) = (0, head tree) while !r.is_leaf
-    do let child = head r.children
-       in match child
-       case #ptr p -> (i + 1, tree[p])
-       case #null -> (i+1,tree[0]) -- this case should never be reached
 
 
 -- let min_tree_size (n: i64) : i64
 
 
 -- Assume [](keys,vals) are already sorted by key
-def node_list_from_keyvalues [n] (nil: datatype) (keys: [n]i64) (vals: [n]datatype) : []node =
+entry node_list_from_keyvalues [n] (nil: datatype) (keys: [n]i64) (vals: [n]datatype) : []node =
   let root = node_new nil in
   if n <= k then
     -- Insert all elements into the new root node
@@ -62,19 +47,20 @@ def node_list_from_keyvalues [n] (nil: datatype) (keys: [n]i64) (vals: [n]dataty
   else
     -- We want to find a good number of nodes to evenly distribute the values
     -- s.t. the b-tree properties are still valid
+    let t = degree - 1 in -- start from minimum number of keys to maximize number of nodes
     let (n_nodes, remainder, n_items) =
-      loop (nn, rr, i) = (n / k, n % k, k)
+      loop (nn, rem, i) = (n / t, n % t, t)
       -- Good candidates:
       --   remainder == 0                            -- nothing to redistribute
       --   remainder < |nodes| && |nodes| > (n / k)  -- ie. there's room for at
       --                                                least 1 more element in
       --                                                each node
       --
-      -- Hopefully we won't reach the case of `i=degree-1`
-      while (rr != 0
-             && !(rr < nn && i < k - 1))
-             && i >= degree - 1 do
-        (n / (i-1), n % (i-1), i - 1)
+      -- Hopefully we won't reach the case of `i=k`
+      while (rem != 0
+             && !(rem < nn && i < k))
+             && i <= k do
+        (n / (i + 1), n % (i + 1), i + 1)
 
 
     in let keyvals = zip keys vals
@@ -103,3 +89,8 @@ entry main [n] (keys: [n]i64) (vals: [n]datatype) : [](bool, i64, i64, [k]i64, [
      |> radix_sort_by_key (.0) (i64.num_bits) (i64.get_bit)
      |> unzip
    in node_list_from_keyvalues nilval sorted_k sorted_v |> map node_from_tuple
+
+def testtree (n : i64) : []node =
+  let kk = iota n
+  let vv = map (*2) kk
+  in node_list_from_keyvalues (-1) kk vv
