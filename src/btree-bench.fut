@@ -6,7 +6,6 @@
 -- random input {[100000]i64   [100000]i64}   auto output
 -- random input {[1000000]i64  [1000000]i64}  auto output
 -- random input {[10000000]i64 [10000000]i64} auto output
--- random input {[100000000]i64 [100000000]i64} auto output
 open import "btree"
 
 entry bench_val_to_nodelist [n] (keys: [n]i64) (vals: [n]datatype) : i64 =
