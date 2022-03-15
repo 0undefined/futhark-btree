@@ -20,7 +20,7 @@ def worst_case_size (n : i64) = worst_case_height n |> min_tree_size
 --  keys. Keeping in mind that each node can contain an interval of `t-1` up until
 --  `2t` keys.
 def min_height (n : i64) : i64 =
-  let max_height = worst_case_height n
+  let _max_height = worst_case_height n
   let range      = degree - 1 ... degree * 2 -- the min and max number of elems of a node
   -- Create a list of
   in map (
@@ -31,11 +31,6 @@ def min_height (n : i64) : i64 =
   |> filter (\(p,_)->p) -- filter out heights+sizes that are too small
   |> head               -- get the smallest height that is able to contain `n` keys
   |> (.1)
-
-
-
-
--- let min_tree_size (n: i64) : i64
 
 
 -- Assume [](keys,vals) are already sorted by key
@@ -78,12 +73,12 @@ entry node_list_from_keyvalues [n] (nil: datatype) (keys: [n]i64) (vals: [n]data
                                           (drop dropsize keyvals |> take partsize)
     )
 
-def node_from_tuple (n: node) : (bool, i64, i64, [k]i64, [k]datatype, [c]i64) =
+def node_from_tuple (n: node) : (i64, i64, [k]i64, [k]datatype, [c]i64) =
   let (keys, vals) = unzip n.keys
-  in (n.is_leaf, ptrval n.parent, n.size, keys, vals, map ptrval n.children)
+  in (ptrval n.parent, n.size, keys, vals, map ptrval n.children)
 
 
-entry main [n] (keys: [n]i64) (vals: [n]datatype) : [](bool, i64, i64, [k]i64, [k]datatype, [c]i64) =
+entry main [n] (keys: [n]i64) (vals: [n]datatype) : [](i64, i64, [k]i64, [k]datatype, [c]i64) =
    let (sorted_k, sorted_v) =
      zip keys vals
      |> radix_sort_by_key (.0) (i64.num_bits) (i64.get_bit)
