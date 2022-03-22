@@ -20,6 +20,7 @@ def fuse (n0 : node) (n1 : node) (sk : (i64,datatype)) : node =
 
 
 -- Split a node into two nodes and a splitter key
+-- TODO: Fix sizes
 def node_split [kk] [cc] (nil: datatype) (keyvals : [kk](i64,datatype)) (children : [cc]ptr) : (node, node, (i64, datatype)) =
   let half = kk / 2
   let is_leaf = all ((==) #null) children
@@ -30,19 +31,18 @@ def node_split [kk] [cc] (nil: datatype) (keyvals : [kk](i64,datatype)) (childre
             with is_leaf = is_leaf
             with size = i64.f64 (f64.ceil (f64.i64 kk / 2f64))
 
-  let (n0k,n1k_t) = split half keyvals
+  let (n0k,n1k_t)  = split half keyvals
   in let (n0c,n1c) = split (half+1) children
-  in let (n1k, sk) = (tail n1k_t, head n1k_t)
+  in let (sk, n1k) = (head n1k_t, tail n1k_t)
 
   in ( n0t with keys     = scatter (newkeyarr nil) (iota half)     n0k
            with children = scatter (newchildarr()) (iota (half+1)) n0c
      , n1t with keys     = scatter (newkeyarr nil) (indices n1k)   n1k
            with children = scatter (newchildarr()) (indices n1c)   n1c
-     , keyvals[half])
+     , sk)
 
 
-
--- "Fuse" two nodes and split the evenly
+-- "Fuse" two nodes and split them evenly
 def fuse_split (nil : datatype) (n0 : node) (n1 : node) (sk: (i64,datatype)) : (node, node, (i64, datatype)) =
   let fuse_size = n0.size + n1.size + 1 -- +1 for splitter key `sk`
 
@@ -55,20 +55,11 @@ def fuse_split (nil : datatype) (n0 : node) (n1 : node) (sk: (i64,datatype)) : (
 
   let fuse_c_tmp = scatter (replicate (fuse_size+1) #null) (iota c) n0.children
   let fuse_c     = scatter (copy fuse_c_tmp)
-                           (map2 (\i p -> if ptrval p == -1 then -1 else 1+i+n0.size) (iota c) n1.children)
+                           (map2 (\i p -> if p == #null then -1 else 1+i+n0.size) (iota c) n1.children)
                            n1.children
 
   in node_split nil fuse_keys fuse_c
-  --
 
--- split a tree using splitter key `x`
--- t: tree
--- i: index of the splitting node
--- x: index of the splitting key in t[i]
-def btree_split [n] (t : *[n]node) (i: i64) (x : i64) : ([]node, []node) =
-  -- 1. Loop through the layers of `t`:
-  --    Split nodes into lhs and rhs, update nodes accordingly
-  ([],[])
 
 -- t: tree to decent into
 -- j: the node to start from (left as a variable instead of using 0 for constructing a tree from a list)
@@ -79,9 +70,10 @@ def decent_l [n] (t : [n]node) (j : i64) (r : i64) : i64 =
   in if h == 0 then j
   else
     let (i, _) = loop (i, nn) = (h, t[j]) while i > r && !nn.is_leaf do
-      ( filter (ptrval >-> ((!=) (-1))) nn.children |> head |> ptrval
+      ( filter ((!=) #null) nn.children |> head |> ptrval
       , t[i])
     in i
+
 
 -- t: tree to decent into
 -- j: the node to start from (left as a variable instead of using 0 for constructing a tree from a list)
@@ -92,19 +84,22 @@ def decent_r [n] (t : [n]node) (j : i64) (r : i64) : i64 =
   in if h == 0 then j
   else
     let (i, _) = loop (i, nn) = (h, t[j]) while i > r && !nn.is_leaf do
-      ( filter (ptrval >-> ((!=) (-1))) nn.children |> last |> ptrval
+      ( filter ((!=) #null) nn.children |> last |> ptrval
       , t[i])
     in i
+
 
 def min_key [n] (t : [n]node) (j : i64) =
   let idx = decent_l t j i64.lowest
   in t[idx].keys |> filter ((.0) >-> (!=) (-1i64)) |> head
 
+
 def max_key [n] (t : [n]node) (j : i64) =
   let idx = decent_r t j i64.highest
   in t[idx].keys |> filter ((.0) >-> (!=) (-1i64)) |> last
 
-def btree_join [n] [m] (t0 : *[n]node) (t1 : *[m]node) : []node =
+
+def btree_join [n] [m] (_t0 : [n]node) (_t1 : [m]node) : []node =
   -- Join t0 and t1 into t
   -- 1. Decent right into t0 until r(t0') == r(t1)
   -- 2. Pick largest key in t0 as splitter key `sk`
@@ -116,3 +111,28 @@ def btree_join [n] [m] (t0 : *[n]node) (t1 : *[m]node) : []node =
   -- 4. Traverse back to root, splitting any nodes that are overfull
   --
   []
+
+-- Parallel join
+-- Maintain a list of pointers to right spine of each tree
+--   can be done in O(2h)
+-- update pointers to spine scatter (U.spine) (indices + (|U.h| - |V.h|) (V.spine)
+
+
+-- split a tree using splitter key `x`
+-- t: tree
+-- i: index of the splitting node
+-- x: index of the splitting key in t[i]
+def btree_split [n] (t : *[n]node) (i: i64) (_x : i64) : ([]node, []node) =
+  -- 1. Loop through the layers of `t`:
+  --    Split nodes into lhs and rhs, update nodes accordingly
+  -- Find the node containing x
+  --let (i,_) = loop (0while
+  --  filter ((<) x) t
+  --do
+  let startnode = t[i]
+  in let (ll, rr) = node_split startnode
+  in loop (lhs, rhs, aux) = ([], [], startnode) while
+    aux.parent != (-1)
+  do
+    --
+  ([],[])
