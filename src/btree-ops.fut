@@ -1,39 +1,23 @@
 open import "types"
 
+
 -- Assumption: r(n0) == r(n1)
-def fuse (nil: datatype) (n0 : node) (n1 : node) (sk : (i64,datatype)) : node =
-  --   let splitter_key ≤ any key ϵ n0
-  --                    ≥ any key ϵ n1
-  let n0len = n0.size in
-  let n1len = n1.size in
-  -- 1. If n0 and n1 are leaf nodes:
-  --    1.a if n0+n1 <= k then n0++n1
-  --    -- 1.b if n0+n1 >= k then new node with sk as root
-  -- 2. if n0 is internal and n1 is leaf
-  if n0.is_leaf && n1.is_leaf then
-  --if n0len + n1len <= k then
-    -- Simple merge
-    --let keyvals  = (n0.keys ++ [sk] ++ n1.keys) |> filter ((.1) >-> (!=) nil) in
-    --let children =  n0.children ++ n1.children |> filter (ptrval >-> (!=) (-1)) in
-    let newkeys = scatter (copy n0.keys with [n0len] = sk)
-                          (map2 (\i (kid,_) -> if kid == -1 then -1 else 1+i+n0len) (iota k) n1.keys)
-                          n1.keys
-    in n0 with keys = newkeys
-          with size = n0len + n1len + 1
-  else
-    -- Do something clever
-    n0
-  --let keyvals = (n0.keys ++ [sk] ++ n1.keys) |> filter ((.1) >-> (!=) nil) in
-  --let children = n0.children ++ n1.children |> filter (ptrval >-> (!=) (-1)) in
-  --{
-  --  is_leaf  = n0.is_leaf || n1.is_leaf,
-  --  parent   = match (n0.parent, n1.parent)
-  --            case (#null,p1) -> p1
-  --            case (p0,_)     -> p0,
-  --  size     = n0.size + n1.size + 1,
-  --  keys     = scatter (replicate k (-1i64,nil)) (iota (length keyvals)) keyvals,
-  --  children = children
-  --}
+-- sk ≥ all keys in n0 and sk ≤ all keys in n1
+-- n0.size + n1.size <= k
+def fuse (n0 : node) (n1 : node) (sk : (i64,datatype)) : node =
+  let offset = (+) (1 + n0.size) -- DRY
+  in let newkeys_t = filter ((.0) >-> (!=)(-1)) n1.keys
+  in let newkeys   = scatter (copy n0.keys with [n0.size] = sk) (indices newkeys_t |> map offset) newkeys_t
+
+  -- If they're both leafs, we will end up scattering empty arrays
+  in let newchilds_t = filter ((!=) #null) n1.children
+  in let newchilds   = scatter (copy n0.children) (indices newchilds_t |> map offset) newchilds_t
+
+  -- Merge with children
+  in n0 with keys     = newkeys
+        with children = newchilds
+        with size     = offset n1.size
+
 
 -- Split a node into two nodes and a splitter key
 def node_split [kk] [cc] (nil: datatype) (keyvals : [kk](i64,datatype)) (children : [cc]ptr) : (node, node, (i64, datatype)) =
