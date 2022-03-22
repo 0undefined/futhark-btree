@@ -78,6 +78,22 @@ def node_from_tuple (n: node) : (i64, i64, [k]i64, [k]datatype, [c]i64) =
   in (ptrval n.parent, n.size, keys, vals, map ptrval n.children)
 
 
+---- returns the indices of nodes containing keys
+--def btree_search_nodes [n] [m] (t : [n]node) (keys : [m]i64) : []i64 =
+--  -- start from the root node
+--  let (result,_) = loop (_, aux) = ([], [(0,t[0])])
+--  while (!all ((.1)>->(.is_leaf)) aux) && !null aux do
+--    -- is any of the keys in aux?
+--    let idx = map (
+--      \(i,xx) -> (i, any (\x -> any ((==)x) keys) xx)
+--    ) (map (\(i,n) ->
+--        let keys = unzip n.keys |> (.0)
+--        in (i, keys) :> (i64, [k]i64)
+--      ) aux) |> filter (.1) |> unzip |> (.0)
+--    -- If any k ϵ aux.keys
+--    in (idx, [])
+--  in result
+
 entry main [n] (keys: [n]i64) (vals: [n]datatype) : [](i64, i64, [k]i64, [k]datatype, [c]i64) =
    let (sorted_k, sorted_v) =
      zip keys vals
