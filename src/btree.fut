@@ -2,17 +2,22 @@ open import "../lib/github.com/diku-dk/sorts/radix_sort"
 open import "types"
 open import "btree-ops"
 
+
 def logt (t : i64) : (i64->f64) = (\x -> (/) (f64.i64 x |> f64.log) (f64.i64 t |> f64.log))
+
 
 -- The minimum number of nodes in a tree is (2*t)^h - 1
 def min_tree_size (height: i64) = 2 * degree**height |> (+) (-1)
+
 
 -- Upper bound on height of a tree with `n` keys
 -- TODO: Maybe use `ceil` ?
 def worst_case_height n = i64.f64 <-< f64.round <| logt degree <| (n + 1) / 2
 
+
 -- Upper bound on nodes of a tree with `n` keys
 def worst_case_size (n : i64) = worst_case_height n |> min_tree_size
+
 
 -- Returns a "somewhat optimal" height of a tree that must be able to contain a
 -- minimum of `n` keys
@@ -55,7 +60,8 @@ entry node_list_from_keyvalues [n] (nil: datatype) (keys: [n]i64) (vals: [n]data
       while (rem != 0
              && !(rem < nn && i < k))
              && i <= k do
-        (n / (i + 1), n % (i + 1), i + 1)
+        let ii = i + 1 in
+        (n / ii, n % ii, ii)
 
 
     in let keyvals = zip keys vals
@@ -72,6 +78,16 @@ entry node_list_from_keyvalues [n] (nil: datatype) (keys: [n]i64) (vals: [n]data
                                           (iota partsize)
                                           (drop dropsize keyvals |> take partsize)
     )
+
+
+--entry tree_from_nodelist [n] (nil : datatype) (nodes : [n]node) : []node =
+--  -- First, determine wether or not `nodes` is even or odd
+--  -- Add an empty node if odd
+--  let nodes_tmp = if n % 2 == 0 then nodes else nodes ++ node_new nil
+--  let nodes_sgmt_len = length nodes_tmp / 2
+--  let nodes_sgmt = unflatten nodes_sgmt_len 2 nodes_tmp
+--  in reduce (btree_join_parallel)
+
 
 def node_from_tuple (n: node) : (i64, i64, [k]i64, [k]datatype, [c]i64) =
   let (keys, vals) = unzip n.keys
