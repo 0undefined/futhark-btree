@@ -1,4 +1,5 @@
-src/btree
+src/*
+!src/*.fut
 *.c
 futhark.pkg
 lib
