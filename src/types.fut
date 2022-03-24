@@ -12,6 +12,8 @@ def k : i64 = degree * 2 - 1
 def c : i64 = degree * 2
 
 type ptr = #null | #ptr i64
+type key = (i64, datatype)
+
 -- is_leaf: Indicates wether or not there's children to this node.
 -- size: Number of keys in the node.
 -- keys: List of tuple of key and data.
@@ -23,7 +25,7 @@ type node = {
   is_leaf:  bool,
   parent:   ptr,
   size:     i64,
-  keys:     [k](i64, datatype),
+  keys:     [k]key,
   children: [c]ptr
 }
 

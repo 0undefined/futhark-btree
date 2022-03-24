@@ -4,7 +4,7 @@ open import "types"
 -- Assumption: r(n0) == r(n1)
 -- sk ≥ all keys in n0 and sk ≤ all keys in n1
 -- n0.size + n1.size <= k
-def fuse (n0 : node) (n1 : node) (sk : (i64,datatype)) : node =
+def fuse_internal (n0 : node) (n1 : node) (sk : key) : node =
   let offset = (+) (1 + n0.size) -- DRY
   in let newkeys_t = filter ((.0) >-> (!=)(-1)) n1.keys
   in let newkeys   = scatter (copy n0.keys with [n0.size] = sk) (indices newkeys_t |> map offset) newkeys_t
@@ -21,7 +21,7 @@ def fuse (n0 : node) (n1 : node) (sk : (i64,datatype)) : node =
 
 -- Split a node into two nodes and a splitter key
 -- TODO: Fix sizes
-def node_split [kk] [cc] (nil: datatype) (keyvals : [kk](i64,datatype)) (children : [cc]ptr) : (node, node, (i64, datatype)) =
+def node_split [kk] [cc] (nil: datatype) (keyvals : [kk]key) (children : [cc]ptr) : (node, node, key) =
   let half = kk / 2
   let is_leaf = all ((==) #null) children
   let n0t = node_new nil
@@ -43,7 +43,7 @@ def node_split [kk] [cc] (nil: datatype) (keyvals : [kk](i64,datatype)) (childre
 
 
 -- "Fuse" two nodes and split them evenly
-def fuse_split (nil : datatype) (n0 : node) (n1 : node) (sk: (i64,datatype)) : (node, node, (i64, datatype)) =
+def fuse_split (nil : datatype) (n0 : node) (n1 : node) (sk: key) : (node, node, key) =
   let fuse_size = n0.size + n1.size + 1 -- +1 for splitter key `sk`
 
   -- Replicate is needed here, since fuse_size might be larger than `k`
