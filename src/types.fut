@@ -29,15 +29,15 @@ type node = {
   children: [c]ptr
 }
 
-def ptrval (p : ptr) : i64 =
-  match p
-  case #null  -> (-1)
-  case #ptr q -> q
+-- Common predicates
+def valid_node : (node -> bool) = (.size) >-> (<=) (0)
+def valid_key  : (key  -> bool) = (.0)    >-> (!=) (-1)
+def valid_ptr  : (ptr  -> bool) = (!=) #null
 
-let newchildarr () : *[c]ptr = replicate c #null
-let newkeyarr (nil : datatype) = replicate k nil |> zip <| replicate k (-1i64)
+def newchildarr () : *[c]ptr = replicate c #null
+def newkeyarr (nil : datatype) = replicate k nil |> zip <| replicate k (-1i64)
 
-let node_new (nil: datatype) : node =
+def node_new (nil: datatype) : node =
   { is_leaf  = true
   , parent   = #null
   , size     = 0i64
@@ -55,3 +55,9 @@ def tree_rank [n] (tree : [n]node) (j : i64) : i64 =
        case #null  -> (i + 1, tree[0]) -- this case should never be reached
                                        -- also, this case results in an infinite
                                        -- loop on purpose.
+
+-- Opaque to primitive type convertions
+def ptrval (p : ptr) : i64 =
+  match p
+  case #null  -> (-1)
+  case #ptr q -> q
