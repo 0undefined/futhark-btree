@@ -8,5 +8,12 @@ debug: $(LIBS)
 build: $(LIBS)
 	futhark opencl src/btree.fut
 
+bench: $(LIBS)
+	futhark bench src/btree-bench.fut
+
+test: $(LIBS)
+	futhark test src/btree-test.fut
+
+
 $(LIBS): futhark.pkg
 	futhark pkg sync
