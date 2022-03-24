@@ -1,13 +1,31 @@
 open import "types"
 
+def scatter_filter 'a [l] (dst : *[l]a) (p : a -> bool) (is : [l]i64) (as : [l]a) : *[l]a =
+  let (iis, aas) = map2 (\i v -> if p v then (i,v) else (-1i64, v)) is as |> unzip
+  in scatter dst iis aas
+
+def scatter_keys (dst : *[k]key) (is : [k]i64) (keys : [k]key) : *[k]key =
+  scatter_filter dst valid_key is keys
+
+def scatter_children (dst : *[c]ptr) (is : [c]i64) (cs : [c]ptr) : *[c]ptr =
+  scatter_filter dst valid_ptr is cs
+
+
+def split_k [n] 't (i : i64) (xs : [n]t) : (t, [i]t, []t) =
+  let (lhs, tmp) = split i xs in
+  let (k,   rhs) = (head tmp, tail tmp)
+  in (k, lhs, rhs)
+
+def fuse_leaf (n0 : node) (n1 : node) : []key =
+  filter ((.0)>->(!=)(-1)) (n0.keys ++ n1.keys)
+
 
 -- Assumption: r(n0) == r(n1)
 -- sk ≥ all keys in n0 and sk ≤ all keys in n1
 -- n0.size + n1.size <= k
 def fuse_internal (n0 : node) (n1 : node) (sk : key) : node =
   let offset = (+) (1 + n0.size) -- DRY
-  in let newkeys_t = filter ((.0) >-> (!=)(-1)) n1.keys
-  in let newkeys   = scatter (copy n0.keys with [n0.size] = sk) (indices newkeys_t |> map offset) newkeys_t
+  in let newkeys = scatter_keys (copy n0.keys with [n0.size] = sk) (indices n1.keys |> map offset) n1.keys
 
   -- If they're both leafs, we will end up scattering empty arrays
   in let newchilds_t = filter ((!=) #null) n1.children
