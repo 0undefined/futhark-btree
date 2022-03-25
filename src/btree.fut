@@ -83,9 +83,28 @@ entry node_list_from_keyvalues [n] (nil: datatype) (keys: [n]i64) (vals: [n]data
 --entry tree_from_nodelist [n] (nil : datatype) (nodes : [n]node) : []node =
 --  -- First, determine wether or not `nodes` is even or odd
 --  -- Add an empty node if odd
---  let nodes_tmp = if n % 2 == 0 then nodes else nodes ++ node_new nil
---  let nodes_sgmt_len = length nodes_tmp / 2
---  let nodes_sgmt = unflatten nodes_sgmt_len 2 nodes_tmp
+--  let nodes_sgmt = unflatten (length nodes) 1 nodes in
+--  let layer1 = map (\idx ->
+--    let fused = fuse_leaf nodes_sgmt[idx*2] nodes_sgmt[idx*2 + 1]
+--    let fused_len = length fused
+--    in if fused_len > k then
+--        -- Split into a tree, this case is very likely
+--        let sk = fused[fused_len / 2]
+--        let keys_l = take
+--        in
+--        [ node_new nil with keys[0] = sk
+--                       with children[0] = #ptr 1
+--                       with children[1] = #ptr 2
+--        , node_new nil with keys = scatter (newkeyarr nil) (iota (fuse_len / 2)) (take (fuse_len / 2) fuse)
+--        , ]
+--      else
+--        -- Just create a new node
+--        let nn = node_new nil with keys = scatter (newkeyarr nil) (indices fused) fused
+--        in [ nn
+--           , node_new nil with size = -1
+--           , node_new nil with size = -1 ]
+--  ) (iota <| length nodes_sgmt / 2)
+--
 --  in reduce (btree_join_parallel)
 
 
