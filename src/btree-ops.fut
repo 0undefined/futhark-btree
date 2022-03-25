@@ -1,5 +1,8 @@
 open import "types"
 
+-- Filter-scatter functions for key and children arrays
+-- They're the same thing, but with different predicates
+
 def scatter_filter 'a [l] (dst : *[l]a) (p : a -> bool) (is : [l]i64) (as : [l]a) : *[l]a =
   let (iis, aas) = map2 (\i v -> if p v then (i,v) else (-1i64, v)) is as |> unzip
   in scatter dst iis aas
@@ -11,6 +14,8 @@ def scatter_children (dst : *[c]ptr) (is : [c]i64) (cs : [c]ptr) : *[c]ptr =
   scatter_filter dst valid_ptr is cs
 
 
+-- splits an array at `i` and returns the element at the `i`th location and both
+-- sides of the array.
 def split_k [n] 't (i : i64) (xs : [n]t) : (t, [i]t, []t) =
   let (lhs, tmp) = split i xs in
   let (k,   rhs) = (head tmp, tail tmp)
@@ -25,11 +30,18 @@ def fuse_leaf (n0 : node) (n1 : node) : []key =
 -- n0.size + n1.size <= k
 def fuse_internal (n0 : node) (n1 : node) (sk : key) : node =
   let offset = (+) (1 + n0.size) -- DRY
-  in let newkeys = scatter_keys (copy n0.keys with [n0.size] = sk) (indices n1.keys |> map offset) n1.keys
+  in let idx = indices n1.children |> map offset :> [c]i64
+
+  in let newkeys = scatter_keys
+    (copy n0.keys with [n0.size] = sk)
+    (init idx :> [k]i64) -- this is guaranteed since `k = c - 1` in def (see types.fut)
+    n1.keys
 
   -- If they're both leafs, we will end up scattering empty arrays
-  in let newchilds_t = filter ((!=) #null) n1.children
-  in let newchilds   = scatter (copy n0.children) (indices newchilds_t |> map offset) newchilds_t
+  in let newchilds = scatter_children
+    (copy n0.children)
+    idx
+    n1.children
 
   -- Merge with children
   in n0 with keys     = newkeys
@@ -49,9 +61,8 @@ def node_split [kk] [cc] (nil: datatype) (keyvals : [kk]key) (children : [cc]ptr
             with is_leaf = is_leaf
             with size = i64.f64 (f64.ceil (f64.i64 kk / 2f64))
 
-  let (n0k,n1k_t)  = split half keyvals
   in let (n0c,n1c) = split (half+1) children
-  in let (sk, n1k) = (head n1k_t, tail n1k_t)
+  in let (sk, n0k, n1k) = split_k half keyvals
 
   in ( n0t with keys     = scatter (newkeyarr nil) (iota half)     n0k
            with children = scatter (newchildarr()) (iota (half+1)) n0c
