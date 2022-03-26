@@ -14,7 +14,7 @@ def c : i64 = degree * 2
 type ptr = #null | #ptr i64
 type key = (i64, datatype)
 
--- is_leaf: Indicates wether or not there's children to this node.
+-- leaf: Indicates wether or not there's children to this node.
 -- size: Number of keys in the node.
 -- keys: List of tuple of key and data.
 -- children: List of i64 indices to child nodes. A value of (-1) means no child.
@@ -22,7 +22,7 @@ type key = (i64, datatype)
 --
 -- Notes: The number of children (if any) are always equal to (size + 1)
 type node = {
-  is_leaf:  bool,
+  leaf:     bool,
   parent:   ptr,
   size:     i64,
   keys:     [k]key,
@@ -38,7 +38,7 @@ def newchildarr () : *[c]ptr = replicate c #null
 def newkeyarr (nil : datatype) = replicate k nil |> zip <| replicate k (-1i64)
 
 def node_new (nil: datatype) : node =
-  { is_leaf  = true
+  { leaf     = true
   , parent   = #null
   , size     = 0i64
   , keys     = newkeyarr nil
@@ -48,7 +48,7 @@ def node_new (nil: datatype) : node =
 -- Returns the rank (height) from a given node in the tree
 -- with i=0 returns the rank of the whole tree.
 def tree_rank [n] (tree : [n]node) (j : i64) : i64 =
-  (.0) <| loop (i, r) = (0, tree[j]) while !r.is_leaf
+  (.0) <| loop (i, r) = (0, tree[j]) while !r.leaf
     do let child = head r.children
        in match child
        case #ptr p -> (i + 1, tree[p])

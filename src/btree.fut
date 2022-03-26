@@ -117,7 +117,7 @@ def node_from_tuple (n: node) : (i64, i64, [k]i64, [k]datatype, [c]i64) =
 --def btree_search_nodes [n] [m] (t : [n]node) (keys : [m]i64) : []i64 =
 --  -- start from the root node
 --  let (result,_) = loop (_, aux) = ([], [(0,t[0])])
---  while (!all ((.1)>->(.is_leaf)) aux) && !null aux do
+--  while (!all ((.1)>->(.leaf)) aux) && !null aux do
 --    -- is any of the keys in aux?
 --    let idx = map (
 --      \(i,xx) -> (i, any (\x -> any ((==)x) keys) xx)

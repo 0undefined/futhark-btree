@@ -7,8 +7,10 @@ def scatter_filter 'a [l] (dst : *[l]a) (p : a -> bool) (is : [l]i64) (as : [l]a
   let (iis, aas) = map2 (\i v -> if p v then (i,v) else (-1i64, v)) is as |> unzip
   in scatter dst iis aas
 
+
 def scatter_keys (dst : *[k]key) (is : [k]i64) (keys : [k]key) : *[k]key =
   scatter_filter dst valid_key is keys
+
 
 def scatter_children (dst : *[c]ptr) (is : [c]i64) (cs : [c]ptr) : *[c]ptr =
   scatter_filter dst valid_ptr is cs
@@ -20,6 +22,7 @@ def split_k [n] 't (i : i64) (xs : [n]t) : (t, [i]t, []t) =
   let (lhs, tmp) = split i xs in
   let (k,   rhs) = (head tmp, tail tmp)
   in (k, lhs, rhs)
+
 
 def fuse_leaf (n0 : node) (n1 : node) : []key =
   filter ((.0)>->(!=)(-1)) (n0.keys ++ n1.keys)
@@ -53,12 +56,12 @@ def fuse_internal (n0 : node) (n1 : node) (sk : key) : node =
 -- TODO: Fix sizes
 def node_split [kk] [cc] (nil: datatype) (keyvals : [kk]key) (children : [cc]ptr) : (node, node, key) =
   let half = kk / 2
-  let is_leaf = all ((==) #null) children
+  let leaf = all ((==) #null) children
   let n0t = node_new nil
-            with is_leaf = is_leaf
+            with leaf = leaf
             with size = half
   let n1t = node_new nil
-            with is_leaf = is_leaf
+            with leaf = leaf
             with size = i64.f64 (f64.ceil (f64.i64 kk / 2f64))
 
   in let (n0c,n1c) = split (half+1) children
@@ -98,7 +101,7 @@ def decent_l [n] (t : [n]node) (j : i64) (r : i64) : i64 =
   let h = tree_rank t j
   in if h == 0 then j
   else
-    let (i, _) = loop (i, nn) = (h, t[j]) while i > r && !nn.is_leaf do
+    let (i, _) = loop (i, nn) = (h, t[j]) while i > r && !nn.leaf do
       ( filter ((!=) #null) nn.children |> head |> ptrval
       , t[i])
     in i
@@ -112,7 +115,7 @@ def decent_r [n] (t : [n]node) (j : i64) (r : i64) : i64 =
   let h = tree_rank t j
   in if h == 0 then j
   else
-    let (i, _) = loop (i, nn) = (h, t[j]) while i > r && !nn.is_leaf do
+    let (i, _) = loop (i, nn) = (h, t[j]) while i > r && !nn.leaf do
       ( filter ((!=) #null) nn.children |> last |> ptrval
       , t[i])
     in i
