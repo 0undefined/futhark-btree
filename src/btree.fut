@@ -40,10 +40,11 @@ def min_height (n : i64) : i64 =
 
 -- Assume [](keys,vals) are already sorted by key
 entry node_list_from_keyvalues [n] (nil: datatype) (keys: [n]i64) (vals: [n]datatype) : []node =
-  let root = node_new nil in
   if n <= k then
     -- Insert all elements into the new root node
-    [root with keys = scatter (copy root.keys) (iota n) (zip keys vals)]
+    [ node_new nil
+        with keys = scatter (newkeyarr nil) (indices keys) (zip keys vals)
+    ]
   else
     -- We want to find a good number of nodes to evenly distribute the values
     -- s.t. the b-tree properties are still valid
