@@ -9,7 +9,10 @@ build: $(LIBS)
 	futhark opencl src/btree.fut
 
 bench: $(LIBS)
-	futhark bench src/btree-bench.fut
+	@echo '# C'
+	futhark bench --backend=c src/btree-bench.fut
+	@echo '# Cuda'
+	futhark bench --backend=cuda src/btree-bench.fut
 
 test: $(LIBS)
 	futhark test src/btree-test.fut
