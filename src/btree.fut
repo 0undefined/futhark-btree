@@ -3,67 +3,42 @@ open import "types"
 open import "btree-ops"
 
 
-def logt (t : i64) : (i64->f64) = (\x -> (/) (f64.i64 x |> f64.log) (f64.i64 t |> f64.log))
+def logt (x : i64) : f64 = (/) (f64.i64 x |> f64.log) (f64.i64 degree |> f64.log)
 
 
--- The minimum number of nodes in a tree is (2*t)^h - 1
-def min_tree_size (height: i64) = 2 * degree**height |> (+) (-1)
+-- The maximum number of nodes in a tree is (2*t)^h - 1
+def max_nodes (height: i64) = (1 - c**(height + 1)) / (1 - c)
+
+
+-- The maximum number of keys containable in a tree is (2*t)^(h+1) - 1
+def max_keys (height: i64) = (2 * degree)**(height+1) |> (+) (-1)
 
 
 -- Upper bound on height of a tree with `n` keys
--- TODO: Maybe use `ceil` ?
-def worst_case_height n = i64.f64 <-< f64.round <| logt degree <| (n + 1) / 2
+def worst_case_height n = i64.f64 <-< f64.ceil <| logt <| (n + 1) / 2
 
 
 -- Upper bound on nodes of a tree with `n` keys
-def worst_case_size (n : i64) = worst_case_height n |> min_tree_size
+def worst_case_size (n : i64) = worst_case_height n |> max_nodes
 
 
--- Returns a "somewhat optimal" height of a tree that must be able to contain a
--- minimum of `n` keys
---  The goal is to get an idea of what hight is optimal in order to contain `n`
---  keys. Keeping in mind that each node can contain an interval of `t-1` up until
---  `2t` keys.
-def min_height (n : i64) : i64 =
-  let _max_height = worst_case_height n
-  let range      = degree - 1 ... degree * 2 -- the min and max number of elems of a node
-  -- Create a list of
-  in map (
-    -- Iterate over the range given a height
-    \h -> map (\i -> ((min_tree_size h) * i > n,h)) range
-  ) (0 ... worst_case_height n)
-  |> flatten
-  |> filter (\(p,_)->p) -- filter out heights+sizes that are too small
-  |> head               -- get the smallest height that is able to contain `n` keys
-  |> (.1)
+-- returns:
+--   number of required nodes to contain `n` elements
+--   remainder of elements that are to be distributed ontop of the nodesize
+--   nodesize
+def node_distribution (n : i64) : (i64, i64, i64) = let k = degree - 1 in (n / k, n % k, k)
 
 
 -- Assume [](keys,vals) are already sorted by key
-entry node_list_from_keyvalues [n] (nil: datatype) (keys: [n]i64) (vals: [n]datatype) : []node =
+entry node_list_from_keyvalues [n] (keys: [n]i64) (vals: [n]datatype) : []node =
   if n <= k then
     -- Insert all elements into the new root node
-    [ node_new nil
-        with keys = scatter (newkeyarr nil) (indices keys) (zip keys vals)
+    [ node_new ()
+        with size = n
+        with keys = scatter (newkeyarr ()) (indices keys) (zip keys vals)
     ]
   else
-    -- We want to find a good number of nodes to evenly distribute the values
-    -- s.t. the b-tree properties are still valid
-    let t = degree - 1 in -- start from minimum number of keys to maximize number of nodes
-    let (n_nodes, remainder, n_items) =
-      loop (nn, rem, i) = (n / t, n % t, t)
-      -- Good candidates:
-      --   remainder == 0                            -- nothing to redistribute
-      --   remainder < |nodes| && |nodes| > (n / k)  -- ie. there's room for at
-      --                                                least 1 more element in
-      --                                                each node
-      --
-      -- Hopefully we won't reach the case of `i=k`
-      while (rem != 0
-             && !(rem < nn && i < k))
-             && i <= k do
-        let ii = i + 1 in
-        (n / ii, n % ii, ii)
-
+    let (n_nodes, remainder, n_items) = node_distribution n
 
     in let keyvals = zip keys vals
     in tabulate n_nodes (\i ->
@@ -74,14 +49,76 @@ entry node_list_from_keyvalues [n] (nil: datatype) (keys: [n]i64) (vals: [n]data
         else
           (n_items, remainder * (n_items+1) + (i-remainder) * n_items)
 
-      in node_new nil with size = partsize
-                      with keys = scatter (replicate k (-1,nil))
+      in node_new () with size = partsize
+                     with keys = scatter (replicate k (-1,nil))
                                           (iota partsize)
                                           (drop dropsize keyvals |> take partsize)
     )
 
 
---entry tree_from_nodelist [n] (nil : datatype) (nodes : [n]node) : []node =
+def tree_from_values [n] (ks : [n]i64) (vs : [n]datatype) = -- : []node =
+  --if n <= k then
+  --  [ node_new ()
+  --      with size = n
+  --      with keys = scatter (newkeyarr ()) (indices ks) (zip ks vs)
+  --  ]
+  --else
+    let max_height  = worst_case_height n
+    let max_node_sz = max_nodes max_height
+    let max_n_keys  = max_keys  max_height
+    let keyvals     = zip ks vs
+    --let root = (scatter_node_keys (node_new ()) (newkeyarr () with [0] = keyvals[length keyvals / 2]))
+    --  with size = 1
+    --let result = replicate max_node_sz (node_new ())
+    --  with [0] = root
+
+    -- Create parameters for each layer in the tree
+    let tree_param_init = replicate max_height (-1,-1,-1,-1) with [0] = (0, n - 1, 1, 1)
+    let (_,tree_params) = loop
+      -- Take:
+      --   previous depth,
+      --   remaining items,
+      --   previous layer nodes and
+      --   previous layer number of items
+      -- as parameter, and the resulting array as "auxiliary"
+      ((depth, rem, prev_nodes, prev_items), params) = (head tree_param_init, tree_param_init)
+    while
+      depth <= max_height && rem > 0
+    do
+      -- the number of nodes in current layer = |prev_layer_items| + |prev_layer_nodes|
+      let nodes = prev_items + prev_nodes in
+      -- determine nodesize for current layer
+      let (node_sz, rr) = -- rr is the `real remainder` in this layer
+        if rem / nodes < k then
+          (rem / nodes, rem % nodes)
+        else
+          -- Fallback to the minimum number of keys a node can have
+          (degree - 1, 0)
+      in
+      let items = node_sz * nodes in
+      let localres =
+      ( depth + 1         -- next depth
+      , rem - items - rr  -- remaining items
+      , nodes             -- number of nodes in this layer
+      , items + rr        -- number of items in this layer
+      ) in
+
+      (localres, params with [depth+1] = localres)
+
+    in tree_params
+      -- TODO: Scatter keyvals to corresponding nodes
+
+def merge_nodelist [n] [m] (dst : *[m]node) (nodes : [n][1]node) : [m]node =
+  let max_h = 0 in
+  copy dst
+
+def tree_from_nodelist [n] (nodes : [n]node) : []node =
+  if n <= 1 then nodes
+  else
+    merge_nodelist (replicate n (node_new ())) (unflatten (length nodes) 1 nodes)
+
+
+--entry tree_from_nodelist [n] (nodes : [n]node) : []node =
 --  -- First, determine wether or not `nodes` is even or odd
 --  -- Add an empty node if odd
 --  let nodes_sgmt = unflatten (length nodes) 1 nodes in
@@ -93,17 +130,17 @@ entry node_list_from_keyvalues [n] (nil: datatype) (keys: [n]i64) (vals: [n]data
 --        let sk = fused[fused_len / 2]
 --        let keys_l = take
 --        in
---        [ node_new nil with keys[0] = sk
+--        [ node_new () with keys[0] = sk
 --                       with children[0] = #ptr 1
 --                       with children[1] = #ptr 2
---        , node_new nil with keys = scatter (newkeyarr nil) (iota (fuse_len / 2)) (take (fuse_len / 2) fuse)
+--        , node_new () with keys = scatter (newkeyarr ()) (iota (fuse_len / 2)) (take (fuse_len / 2) fuse)
 --        , ]
 --      else
 --        -- Just create a new node
---        let nn = node_new nil with keys = scatter (newkeyarr nil) (indices fused) fused
+--        let nn = node_new () with keys = scatter (newkeyarr ()) (indices fused) fused
 --        in [ nn
---           , node_new nil with size = -1
---           , node_new nil with size = -1 ]
+--           , node_new () with size = -1
+--           , node_new () with size = -1 ]
 --  ) (iota <| length nodes_sgmt / 2)
 --
 --  in reduce (btree_join_parallel)
@@ -135,4 +172,4 @@ entry main [n] (keys: [n]i64) (vals: [n]datatype) : [](i64, i64, [k]i64, [k]data
      zip keys vals
      |> radix_sort_by_key (.0) (i64.num_bits) (i64.get_bit)
      |> unzip
-   in node_list_from_keyvalues nilval sorted_k sorted_v |> map node_from_tuple
+   in node_list_from_keyvalues sorted_k sorted_v |> map node_from_tuple

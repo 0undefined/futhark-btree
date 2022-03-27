@@ -3,7 +3,7 @@ open import "types"
 -- Filter-scatter functions for key and children arrays
 -- They're the same thing, but with different predicates
 
-def scatter_filter 'a [l] (dst : *[l]a) (p : a -> bool) (is : [l]i64) (as : [l]a) : *[l]a =
+local def scatter_filter 'a [l] (dst : *[l]a) (p : a -> bool) (is : [l]i64) (as : [l]a) : *[l]a =
   let (iis, aas) = map2 (\i v -> if p v then (i,v) else (-1i64, v)) is as |> unzip
   in scatter dst iis aas
 
@@ -16,6 +16,10 @@ def scatter_children (dst : *[c]ptr) (is : [c]i64) (cs : [c]ptr) : *[c]ptr =
   scatter_filter dst valid_ptr is cs
 
 
+def scatter_node_keys (n : node) (keys : [k]key) : node =
+  n with keys = scatter_keys (copy n.keys) (indices keys) keys
+
+
 -- splits an array at `i` and returns the element at the `i`th location and both
 -- sides of the array.
 def split_k [n] 't (i : i64) (xs : [n]t) : (t, [i]t, []t) =
@@ -26,6 +30,10 @@ def split_k [n] 't (i : i64) (xs : [n]t) : (t, [i]t, []t) =
 
 def fuse_leaf (n0 : node) (n1 : node) : []key =
   filter ((.0)>->(!=)(-1)) (n0.keys ++ n1.keys)
+
+
+def tree_height [n] (t : [n]node) : i64 =
+  (.1) <| loop (n, h) = (head t, 0) while !n.leaf do (t[ head n.children |> ptrval ], h+1)
 
 
 -- Assumption: r(n0) == r(n1)
@@ -54,28 +62,28 @@ def fuse_internal (n0 : node) (n1 : node) (sk : key) : node =
 
 -- Split a node into two nodes and a splitter key
 -- TODO: Fix sizes
-def node_split [kk] [cc] (nil: datatype) (keyvals : [kk]key) (children : [cc]ptr) : (node, node, key) =
+def node_split [kk] [cc] (keyvals : [kk]key) (children : [cc]ptr) : (node, node, key) =
   let half = kk / 2
   let leaf = all ((==) #null) children
-  let n0t = node_new nil
+  let n0t = node_new ()
             with leaf = leaf
             with size = half
-  let n1t = node_new nil
+  let n1t = node_new ()
             with leaf = leaf
             with size = i64.f64 (f64.ceil (f64.i64 kk / 2f64))
 
   in let (n0c,n1c) = split (half+1) children
   in let (sk, n0k, n1k) = split_k half keyvals
 
-  in ( n0t with keys     = scatter (newkeyarr nil) (iota half)     n0k
+  in ( n0t with keys     = scatter (newkeyarr  ()) (iota half)     n0k
            with children = scatter (newchildarr()) (iota (half+1)) n0c
-     , n1t with keys     = scatter (newkeyarr nil) (indices n1k)   n1k
+     , n1t with keys     = scatter (newkeyarr  ()) (indices n1k)   n1k
            with children = scatter (newchildarr()) (indices n1c)   n1c
      , sk)
 
 
 -- "Fuse" two nodes and split them evenly
-def fuse_split (nil : datatype) (n0 : node) (n1 : node) (sk: key) : (node, node, key) =
+def fuse_split (n0 : node) (n1 : node) (sk: key) : (node, node, key) =
   let fuse_size = n0.size + n1.size + 1 -- +1 for splitter key `sk`
 
   -- Replicate is needed here, since fuse_size might be larger than `k`
@@ -90,7 +98,7 @@ def fuse_split (nil : datatype) (n0 : node) (n1 : node) (sk: key) : (node, node,
                            (map2 (\i p -> if p == #null then -1 else 1+i+n0.size) (iota c) n1.children)
                            n1.children
 
-  in node_split nil fuse_keys fuse_c
+  in node_split fuse_keys fuse_c
 
 
 -- t: tree to decent into

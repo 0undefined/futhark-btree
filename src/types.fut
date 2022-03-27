@@ -1,7 +1,8 @@
 -- constant parameters
 type datatype = i64
+def nil : datatype = (-1)
 
-def nilval : i64 = 0i64
+def nilkey : i64 = -1i64
 def degree : i64 = 4   -- aka. `t` in CLRS
 
 -- All nodes (except the root node) must contain a number of k keys
@@ -35,13 +36,13 @@ def valid_key  : (key  -> bool) = (.0)    >-> (!=) (-1)
 def valid_ptr  : (ptr  -> bool) = (!=) #null
 
 def newchildarr () : *[c]ptr = replicate c #null
-def newkeyarr (nil : datatype) = replicate k nil |> zip <| replicate k (-1i64)
+def newkeyarr   () : *[k]key = replicate k nil |> zip <| replicate k nilkey
 
-def node_new (nil: datatype) : node =
+def node_new () : node =
   { leaf     = true
   , parent   = #null
   , size     = 0i64
-  , keys     = newkeyarr nil
+  , keys     = newkeyarr ()
   , children = newchildarr ()
   }
 
