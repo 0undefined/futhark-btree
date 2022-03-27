@@ -28,11 +28,11 @@ By doing this I wish to learn the following:
 | Week | Task                                                                  |
 |-----:|:----------------------------------------------------------------------|
 |    6 | Read paper                                                            |
-|    7 | Recursive datastructure as a flat array                               |
-|    8 | Coalescence                                                           |
-|    9 | Merge/Split                                                           |
-|   10 |                                                                       |
-|   11 |                                                                       |
-|   12 |                                                                       |
-|   13 | Handin                                                                |
+|    7 | Confidently overestimate how much time you have                       |
+|    8 | Mistakenly waste your time on SAT                                     |
+|    9 | Spend too many hours doing SAT assignments                            |
+|   10 | Despair                                                               |
+|   11 | Panic                                                                 |
+|   12 | Crunch / damage control                                               |
+|   13 | Hand-in                                                               |
 |   14 | Presentation                                                          |
