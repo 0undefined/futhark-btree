@@ -22,17 +22,3 @@ By doing this I wish to learn the following:
 * Write high level performant code in a function language with respect to
   low-level architechtural properties, such as thread divergence and cache
   coalescence.
-
-## Time schedule
-
-| Week | Task                                                                  |
-|-----:|:----------------------------------------------------------------------|
-|    6 | Read paper                                                            |
-|    7 | Confidently overestimate how much time you have                       |
-|    8 | Mistakenly waste your time on SAT                                     |
-|    9 | Spend too many hours doing SAT assignments                            |
-|   10 | Despair                                                               |
-|   11 | Panic                                                                 |
-|   12 | Crunch / damage control                                               |
-|   13 | Hand-in                                                               |
-|   14 | Presentation                                                          |
