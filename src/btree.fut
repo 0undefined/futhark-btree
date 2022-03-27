@@ -56,13 +56,10 @@ entry node_list_from_keyvalues [n] (keys: [n]i64) (vals: [n]datatype) : []node =
     )
 
 
-def tree_from_values [n] (ks : [n]i64) (vs : [n]datatype) = -- : []node =
-  --if n <= k then
-  --  [ node_new ()
-  --      with size = n
-  --      with keys = scatter (newkeyarr ()) (indices ks) (zip ks vs)
-  --  ]
-  --else
+-- Downsweep method guarantees h ≤ max_height n
+def tree_from_values_downsweep [n] (ks : [n]i64) (vs : [n]datatype) : [](i64,i64,i64,i64) = -- : []node =
+  if n <= k then [ (0, 0, 1, n) ]
+  else
     let max_height  = worst_case_height n
     let max_node_sz = max_nodes max_height
     let max_n_keys  = max_keys  max_height
@@ -73,7 +70,7 @@ def tree_from_values [n] (ks : [n]i64) (vs : [n]datatype) = -- : []node =
     --  with [0] = root
 
     -- Create parameters for each layer in the tree
-    let tree_param_init = replicate max_height (-1,-1,-1,-1) with [0] = (0, n - 1, 1, 1)
+    let tree_param_init = replicate (max_height+1) (-1,-1,-1,-1) with [0] = (0, n - 1, 1, 1)
     let (_,tree_params) = loop
       -- Take:
       --   previous depth,
@@ -105,8 +102,11 @@ def tree_from_values [n] (ks : [n]i64) (vs : [n]datatype) = -- : []node =
 
       (localres, params with [depth+1] = localres)
 
-    in tree_params
-      -- TODO: Scatter keyvals to corresponding nodes
+    in let h = map (.0) tree_params |> reduce i64.max i64.lowest
+    -- Cut off trailing unused layer params
+    in take (h+1) tree_params
+    -- TODO: Scatter keyvals to corresponding nodes
+    -- (Done in upsweep)
 
 def merge_nodelist [n] [m] (dst : *[m]node) (nodes : [n][1]node) : [m]node =
   let max_h = 0 in
