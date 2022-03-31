@@ -64,17 +64,10 @@ entry node_list_from_keyvalues [n] (keys: [n]i64) (vals: [n]datatype) : []node =
 
 
 -- Downsweep method guarantees h ≤ max_height n
-def tree_from_values_downsweep [n] (ks : [n]i64) (vs : [n]datatype) : [](i64,i64,i64,i64) = -- : []node =
-  if n <= k then [ (0, 0, 1, n) ]
-  else
+def tree_from_values_downsweep (n : i64) : [](i64,i64,i64,i64) =
+  --if n <= k then [ (0, 0, 1, n) ]
+  --else
     let max_height  = worst_case_height n
-    let max_node_sz = max_nodes max_height
-    let max_n_keys  = max_keys  max_height
-    let keyvals     = zip ks vs
-    --let root = (scatter_node_keys (node_new ()) (newkeyarr () with [0] = keyvals[length keyvals / 2]))
-    --  with size = 1
-    --let result = replicate max_node_sz (node_new ())
-    --  with [0] = root
 
     -- Create parameters for each layer in the tree
     let tree_param_init = replicate (max_height+1) (-1,-1,-1,-1) with [0] = (0, n - 1, 1, 1)
@@ -93,7 +86,7 @@ def tree_from_values_downsweep [n] (ks : [n]i64) (vs : [n]datatype) : [](i64,i64
       let nodes = prev_items + prev_nodes in
       -- determine nodesize for current layer
       let (node_sz, rr) = -- rr is the `real remainder` in this layer
-        if rem / nodes < k then
+        if (i64.f64 <-< f64.ceil) (f64.i64 rem / f64.i64 nodes) <= k then
           (rem / nodes, rem % nodes)
         else
           -- Fallback to the minimum number of keys a node can have
@@ -112,8 +105,40 @@ def tree_from_values_downsweep [n] (ks : [n]i64) (vs : [n]datatype) : [](i64,i64
     in let h = map (.0) tree_params |> reduce i64.max i64.lowest
     -- Cut off trailing unused layer params
     in take (h+1) tree_params
-    -- TODO: Scatter keyvals to corresponding nodes
-    -- (Done in upsweep)
+
+def mk_depth_idx [m] (shape : [m]i64) =
+  let shape_rot = rotate (-1) (copy shape) with [0] = 0
+  let shape_scn = scan (+) 0 shape_rot
+  let flags     = map (\_->1i64) (iota m) with [0] = 0
+  let len       = last shape_scn + last shape
+  in scatter (replicate len 0) shape_scn flags |> scan (+) 0
+
+def tree_from_values_upsweep [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h](i64,i64,i64,i64)) =
+  let sizes  = map (.2) params in
+  let dst_sz = i64.sum sizes in
+  let dst    = replicate dst_sz (node_new ()) in
+  --loop ( aux , p , depth ) = ( dst , last params , h - 1) while depth >= 0 do
+  --  let remaining = p.1 in
+  --  let n_nodes = p.2 in
+  --  let n_items = p.3 in
+
+  --  let rem = n_items % n_nodes in
+
+  --  -- (1)
+  --  let node_szs' = replicate n_nodes (n_items / n_nodes) in
+  --  -- (2)
+  --  let node_szs  = map2 (\sz i -> if i < rem then sz + 1 else sz) node_szs' (indices node_szs') in
+  --  -- (3)
+  --  let idxs = iota (n / n_nodes) in
+  --  -- (4) -- HOW TO CALCULATE SPACING????
+  --  let spacing = 3 in
+  --  let offsets = map (*spacing) idxs in
+
+  --  -- TODO: Fix for cases n != 5
+
+  -- -- (-1, depth - 1, h - 1)
+  []
+
 
 def merge_nodelist [n] [m] (dst : *[m]node) (nodes : [n][1]node) : [m]node =
   let max_h = 0 in
