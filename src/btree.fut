@@ -63,6 +63,16 @@ entry node_list_from_keyvalues [n] (keys: [n]i64) (vals: [n]datatype) : []node =
     )
 
 
+--type layer_param = {depth: i64, remaining: i64, nodes: i64, items: i64}
+def relax [h] (params : [h](i64, i64, i64, i64)) : [](i64, i64, i64, i64) =
+  let leaf_layer_param = last params
+  -- if |items| / |nodes| < degree in the last layer, we must "relax" the params a bit
+  in if leaf_layer_param.3 / leaf_layer_param.2 < degree then
+    [] -- TODO: Find out how to "relax"
+  else
+    params
+
+
 -- Downsweep method guarantees h ≤ max_height n
 def tree_from_values_downsweep (n : i64) : [](i64,i64,i64,i64) =
   --if n <= k then [ (0, 0, 1, n) ]
