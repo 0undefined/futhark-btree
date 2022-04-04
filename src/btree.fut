@@ -72,49 +72,60 @@ def relax [h] (params : [h](i64, i64, i64, i64)) : [](i64, i64, i64, i64) =
   else
     params
 
+type layer_param = {depth: i64, remaining: i64, nodes: i64, keys: i64}
+def layer_param_nil : layer_param =
+  {depth = -1i64, remaining = -1i64, nodes = -1i64, keys = -1i64}
 
--- Downsweep method guarantees h ≤ max_height n
-def tree_from_values_downsweep (n : i64) : [](i64,i64,i64,i64) =
-  --if n <= k then [ (0, 0, 1, n) ]
-  --else
-    let max_height  = worst_case_height n
+-- analyze phase guarantees h ≤ max_height n
+-- might require relaxation if
+--     (last result).keys / (last result).nodes < degree - 1
+def analyze (n : i64) : []layer_param =
+  let rootlayer : layer_param = {depth = 0, remaining = n - 1, nodes = 1, keys = 1}
+  in if n <= k then [rootlayer with keys = n]
+  else
+    let max_height : i64 = worst_case_height n
+    in let dst = replicate (max_height+1) layer_param_nil
+      with [0] = rootlayer
 
-    -- Create parameters for each layer in the tree
-    let tree_param_init = replicate (max_height+1) (-1,-1,-1,-1) with [0] = (0, n - 1, 1, 1)
-    let (_,tree_params) = loop
-      -- Take:
-      --   previous depth,
-      --   remaining items,
-      --   previous layer nodes and
-      --   previous layer number of items
-      -- as parameter, and the resulting array as "auxiliary"
-      ((depth, rem, prev_nodes, prev_items), params) = (head tree_param_init, tree_param_init)
-    while
-      depth <= max_height && rem > 0
-    do
-      -- the number of nodes in current layer = |prev_layer_items| + |prev_layer_nodes|
-      let nodes = prev_items + prev_nodes in
-      -- determine nodesize for current layer
-      let (node_sz, rr) = -- rr is the `real remainder` in this layer
-        if (i64.f64 <-< f64.ceil) (f64.i64 rem / f64.i64 nodes) <= k then
-          (rem / nodes, rem % nodes)
-        else
-          -- Fallback to the minimum number of keys a node can have
-          (degree - 1, 0)
-      in
-      let items = node_sz * nodes in
-      let localres =
-      ( depth + 1         -- next depth
-      , rem - items - rr  -- remaining items
-      , nodes             -- number of nodes in this layer
-      , items + rr        -- number of items in this layer
-      ) in
+    in let (_,result) = loop (layer,tmp) = (head dst, dst)
+    while layer.remaining > 0 && layer.depth < max_height do
 
-      (localres, params with [depth+1] = localres)
+      let nodes = layer.nodes + layer.keys in
+      let (node_sz, remainder) = --if layer.remaining / nodes < k then
+        if (i64.f64 <-< f64.ceil) (f64.i64 layer.remaining / f64.i64 nodes) <= k then
+        (layer.remaining / nodes, layer.remaining % nodes)
+      else
+        (degree - 1, 0)
 
-    in let h = map (.0) tree_params |> reduce i64.max i64.lowest
+      in let num_keys = node_sz * nodes
+      in let next_layer = {
+        depth     = layer.depth + 1,
+        remaining = layer.remaining - num_keys - remainder,
+        nodes     = nodes,
+        keys      = num_keys + remainder
+      } in
+      (next_layer, tmp with [layer.depth + 1] = next_layer)
+
+    in let h = map (.depth) result |> reduce i64.max i64.lowest
     -- Cut off trailing unused layer params
-    in take (h+1) tree_params
+    in take (h+1) result
+
+
+-- start: 4^{x}*t
+-- end:   2*t^{x+1}-2
+-- t=5: Invalid ranges: 20-48,100-248,500-1248
+-- t=4: Invalid ranges: 16-30,64-126,256-510
+def test_valid_btree_params [h] (p : [h]layer_param) : bool =
+  all (\q ->
+    q.keys / q.nodes >= degree - 1 && q.keys / q.nodes <= k
+  ) (tail p)
+
+
+def invalid_range (n : i64) : bool =
+  if n < degree then false else
+  let max = (i64.f64 <-< f64.ceil) (logt n) in
+  any (\x -> (4**x)*degree <= n && n <= 2 * degree**(x+1) - 2) (1...max)
+
 
 def mk_depth_idx [m] (shape : [m]i64) =
   let shape_rot = rotate (-1) (copy shape) with [0] = 0
@@ -123,8 +134,9 @@ def mk_depth_idx [m] (shape : [m]i64) =
   let len       = last shape_scn + last shape
   in scatter (replicate len 0) shape_scn flags |> scan (+) 0
 
-def tree_from_values_upsweep [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h](i64,i64,i64,i64)) =
-  let sizes  = map (.2) params in
+
+def tree_from_values_upsweep [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_param) =
+  let sizes  = map (.nodes) params in
   let dst_sz = i64.sum sizes in
   let dst    = replicate dst_sz (node_new ()) in
   --loop ( aux , p , depth ) = ( dst , last params , h - 1) while depth >= 0 do
