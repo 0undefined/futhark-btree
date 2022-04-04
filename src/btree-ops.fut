@@ -164,7 +164,7 @@ def btree_join [n] [m] (_t0 : [n]node) (_t1 : [m]node) : []node =
 -- x: index of the splitting key in t[i]
 def btree_split [n] (t : *[n]node) (i: i64) (x : i64) : ([]node, []node) =
   let sn = t[i] in
-  let sk = sn.keys[x] in
+  let _sk = sn.keys[x] in
   -- 1. Loop through the layers of `t`:
   --    Split nodes into lhs and rhs, update nodes accordingly
   -- Find the node containing x
