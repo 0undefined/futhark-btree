@@ -15,7 +15,7 @@ bench: $(LIBS)
 	futhark bench --backend=cuda src/btree-bench.fut
 
 test: $(LIBS)
-	futhark test src/btree-test.fut
+	futhark test --concurrency=`nproc` src/btree-test.fut
 
 
 $(LIBS): futhark.pkg
