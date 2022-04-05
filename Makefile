@@ -1,22 +1,27 @@
 LIBS=lib/github.com/diku-dk/sorts/radix_sort.fut
+FUT=futhark
 
 .PHONY: debug build
 
+
 debug: $(LIBS)
-	futhark c src/btree.fut
+	$(FUT) c src/btree.fut
+
 
 build: $(LIBS)
-	futhark opencl src/btree.fut
+	$(FUT) opencl src/btree.fut
+
 
 bench: $(LIBS)
 	@echo '# C'
-	futhark bench --backend=c src/btree-bench.fut
+	$(FUT) bench --backend=c src/btree-bench.fut
 	@echo '# Cuda'
-	futhark bench --backend=cuda src/btree-bench.fut
+	$(FUT) bench --backend=cuda src/btree-bench.fut
+
 
 test: $(LIBS)
-	futhark test --concurrency=`nproc` src/btree-test.fut
+	$(FUT) test --concurrency=`nproc` src/btree-test.fut
 
 
 $(LIBS): futhark.pkg
-	futhark pkg sync
+	$(FUT) pkg sync
