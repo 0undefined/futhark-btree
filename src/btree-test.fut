@@ -2,9 +2,16 @@ open import "btree"
 
 
 def testing_nodelist (n : i64) : []node =
-  let kk = iota n
-  let vv = map (*2) kk
-  in node_list_from_keyvalues kk vv
+  let ks = iota n
+  let vs = map (*2) ks
+  in node_list_from_keyvalues ks vs
+
+
+def testing_tree (n: i64) : []node =
+  let ks = iota n
+  let vs = map (*2) ks
+  in construct_tree_from_sorted_keyvals ks vs
+
 
 
 -- Test node-list creation from array of values, size preservation
