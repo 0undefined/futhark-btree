@@ -135,6 +135,10 @@ def mk_depth_idx [m] (shape : [m]i64) =
   in scatter (replicate len 0) shape_scn flags |> scan (+) 0
 
 
+-- adds +1 to the first `rem` node sizes
+def add_remainder (num_nodes : i64) (node_sz : i64) (remainder : i64) =
+  reduce_by_index (replicate num_nodes node_sz) (+) 0 (iota remainder) (replicate remainder 1)
+
 
 def tree_from_values_upsweep [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_param) =
   let kv = zip ks vs
@@ -142,20 +146,26 @@ def tree_from_values_upsweep [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : 
     [node_new() with keys = kv
                 with size = n]
   else
-    let sizes  = map (.nodes) params
-    let dst_sz = i64.sum sizes
-    let dst    = replicate dst_sz (node_new ())
+    let sizes         = map (.nodes) params
+    let dst_sz        = i64.sum sizes
+    let dst           = replicate dst_sz (node_new ())
     let node_layermap = mk_depth_idx sizes
-    let layeridx = scan (+) 0 sizes |> rotate (-1) with [0] = 0
+    let layeridx      = scan (+) 0 sizes |> rotate (-1) with [0] = 0
     -- manually do the leaf nodes, loop over the rest
     in let (tree, _,_) = loop (res, aux, layer) = (dst, kv, (last params).depth)
     while layer >= 0 do
-      let p = params[layer]
-      in let pn  = p.nodes
-      in let nsz = p.keys / pn
-      in let rem = p.keys % pn
-      in let szs = reduce_by_index (replicate pn nsz) (+) 0 (iota rem) (replicate rem 1)
-      --in let tmp = indices szs |> map (+1)
+      -- Preliminary info about the current layer
+      let p = params[layer] |> trace
+      in let pn  = p.nodes     -- number of nodes
+      in let nsz = p.keys / pn -- node size / number of keys in each node
+      in let rem = p.keys % pn -- remaining keys that need to be distributed
+
+      in let szs = add_remainder pn nsz rem |> trace
+      in let child_szs = map (+1) szs |> trace
+      in let sum_childs = i64.sum child_szs |> trace
+
+      in let child_indices = (rotate (-1) child_szs) with [0] = 0 |> trace
+
       in let src_indices = map2 (+)
                           (indices szs |> map (+1))
                           (scan (+) 0 szs)
@@ -164,32 +174,45 @@ def tree_from_values_upsweep [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : 
 
       in let tmp' = replicate pn (node_new())
 
-      in let ptr_from_i64 (i:i64) : ptr =
-        if i < 0 then #null else #ptr i
-
       -- TODO: This function makes incredibly redundant calculations, move this!
       in let parent_idx (l: i64) : [pn]ptr =
         if l == 0 then replicate pn #null else
-        let p2 = params[l-1]
-        in let p2n = p2.nodes
-        in let nsz2 = p2.keys / p2n
-        in let rem2 = p2.keys % p2n
-        in let szs2 = reduce_by_index (replicate p2n nsz2) (+) 0 (iota rem2) (replicate rem2 1) |> map (+1) :> [p2n]i64
+        let p = params[l-1]
+        in let p2n = p.nodes
+        in let nsz = p.keys / p2n
+        in let rem = p.keys % p2n
+        in let szs = add_remainder p2n nsz rem |> map (+1) :> [p2n]i64
+
         -- if Σ szs2 != pn then we messed up
 
-        in let pidx = filter ((.1)>->((==)(layer-1))) <| zip (indices node_layermap) node_layermap |> map ((.0) >-> ptr_from_i64) :> [p2n]ptr
-        in let sidx = mk_depth_idx szs2 :> [pn]i64
+        -- TODO: USE layeridx[layer-1] TO GET START OF PARENT LAYER AND THEN TAKE/DROP (OR MAP \i->a[i]) INDICES
+        in let pidx = filter ((.1) >-> ((==)(layer-1))) (zip (indices node_layermap) node_layermap)
+                    -- convert the node indices to pointers
+                    |> map   ((.0) >-> ptr_from_i64) :> [p2n]ptr
+        in let sidx = mk_depth_idx szs :> [pn]i64
         in map (\i -> pidx[i]) sidx
 
 
+      in let children_idx (l: i64) : [sum_childs]ptr =
+        if l == h - 1 then replicate sum_childs #null else
+        map (((+) layeridx[l+1]) >-> ptr_from_i64) (iota sum_childs)
+
+
+
       in let parent_ptrs : [pn]ptr = parent_idx layer
-      in let newnodes = map4 (\i s (nn:node) p ->
+      in let child_ptrs  : [sum_childs]ptr = children_idx layer |> trace
+
+      in let newnodes = map5 (\i s (nn:node) p ci ->
         let kk = drop i aux |> take s
+        in let ccc = ci |> trace
+        in let cc = take (s+1) (drop ci child_ptrs) -- drop ci child_ptrs |> take (s+1)
         in nn
           with keys   = scatter (copy nn.keys) (indices kk) kk
           with size   = s
           with parent = p
-      ) src_indices szs tmp' parent_ptrs
+          with leaf   = layer == h-1
+          with children = scatter (copy nn.children) (indices cc) cc
+      ) src_indices szs tmp' parent_ptrs child_indices
 
       in let dst_idx = iota pn |> map (+(layeridx[layer]))
       in let next_kv_idx = (map2 (+) src_indices szs |> init)
