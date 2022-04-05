@@ -140,11 +140,14 @@ def add_remainder (num_nodes : i64) (node_sz : i64) (remainder : i64) =
   reduce_by_index (replicate num_nodes node_sz) (+) 0 (iota remainder) (replicate remainder 1)
 
 
-def tree_from_values_upsweep [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_param) =
+-- constructs a btree from a list of keys, values and b-tree parameters that
+-- describe the shape of the given B-Tree.
+def construct [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_param) : []node =
   let kv = zip ks vs
   in if h <= 1 then
-    [node_new() with keys = kv
-                with size = n]
+    let root = node_new() in
+    [ root with keys = scatter (copy root.keys) (indices kv) kv
+           with size = n ]
   else
     let sizes         = map (.nodes) params
     let dst_sz        = i64.sum sizes
@@ -203,15 +206,13 @@ def tree_from_values_upsweep [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : 
       in let child_ptrs  : [sum_childs]ptr = children_idx layer |> trace
 
       in let newnodes = map5 (\i s (nn:node) p ci ->
-        let kk = drop i aux |> take s
-        in let ccc = ci |> trace
-        in let cc = take (s+1) (drop ci child_ptrs) -- drop ci child_ptrs |> take (s+1)
-        in nn
-          with keys   = scatter (copy nn.keys) (indices kk) kk
-          with size   = s
-          with parent = p
-          with leaf   = layer == h-1
-          with children = scatter (copy nn.children) (indices cc) cc
+        let kk = drop i aux |> take s in
+        let cc = take (s+1) (drop ci child_ptrs) in
+        nn with keys   = scatter (copy nn.keys) (indices kk) kk
+           with size   = s
+           with parent = p
+           with leaf   = layer == h-1
+           with children = scatter (copy nn.children) (indices cc) cc
       ) src_indices szs tmp' parent_ptrs child_indices
 
       in let dst_idx = iota pn |> map (+(layeridx[layer]))
@@ -225,8 +226,14 @@ def tree_from_values_upsweep [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : 
     in tree
 
 
+def construct_tree_from_sorted_keyvals [n] (ks : [n]i64) (vs: [n]datatype) : []node =
+  let tree_params = analyze n
+  in construct ks vs tree_params
+
+
 def merge_nodelist [n] [m] (dst : *[m]node) (_nodes : [n][1]node) : [m]node =
   copy dst
+
 
 def tree_from_nodelist [n] (nodes : [n]node) : []node =
   if n <= 1 then nodes
