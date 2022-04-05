@@ -1,13 +1,13 @@
 open import "btree"
 
 
-def testing_nodelist (n : i64) : []node =
+local def testing_nodelist (n : i64) : []node =
   let ks = iota n
   let vs = map (*2) ks
   in node_list_from_keyvalues ks vs
 
 
-def testing_tree (n: i64) : []node =
+local def testing_tree (n: i64) : []node =
   let ks = iota n
   let vs = map (*2) ks
   in construct_tree_from_sorted_keyvals ks vs
@@ -49,7 +49,7 @@ entry node_list_value_preservation (i : i64) : bool =
 
 
 -- Test that a tree preserves the properties of a B-Tree
-def valid_nodes [n] (t : [n]node) : bool =
+local def valid_nodes [n] (t : [n]node) : bool =
   -- test wether sizes are representative of the actual number of keys
   let test_attributes (m : node) : bool =
     let res =
