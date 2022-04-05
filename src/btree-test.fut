@@ -72,7 +72,7 @@ local def valid_nodes [n] (t : [n]node) : bool =
     root_valid
   else
     let firstlayer   = filter valid_ptr (head t).children in
-    let (test_result,_,_) =
+    let (test_result,_) =
       loop (valid, layer) =
         ( root_valid
         , firstlayer
@@ -89,14 +89,16 @@ local def valid_nodes [n] (t : [n]node) : bool =
     in test_result
 
 
--- Test B-Tree construction from list of values, B-Tree property preservation
+-- Test B-Tree construction from list of values, B-Tree property preservation.
 -- ==
 -- entry:btree_construction_property_preservation
 -- input {0i64}    output {true}
 -- input {1i64}    output {true}
 -- input {10i64}   output {true}
 -- input {50i64}   output {true}
--- input {100i64}  output {true}
--- input {1024i64} output {true}
+-- input {2048i64} output {true}
+
+-- Be careful on the inputs! sizes of `n` that produces invalid btrees from the
+-- analyze step causes invalid b-trees to be produced.
 entry btree_construction_property_preservation (i : i64) : bool =
-  valid_nodes (testing_nodelist i)
+  valid_nodes (testing_tree i)
