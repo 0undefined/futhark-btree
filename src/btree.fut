@@ -145,14 +145,13 @@ def tree_from_values_upsweep [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : 
     let sizes  = map (.nodes) params
     let dst_sz = i64.sum sizes
     let dst    = replicate dst_sz (node_new ())
-    --let layeridx = mk_depth_idx sizes
+    let node_layermap = mk_depth_idx sizes
     let layeridx = scan (+) 0 sizes |> rotate (-1) with [0] = 0
     -- manually do the leaf nodes, loop over the rest
     in let (tree, _,_) = loop (res, aux, layer) = (dst, kv, (last params).depth)
     while layer >= 0 do
-    -------------------------------------
-      let p = params[layer] in
-      let pn  = p.nodes
+      let p = params[layer]
+      in let pn  = p.nodes
       in let nsz = p.keys / pn
       in let rem = p.keys % pn
       in let szs = reduce_by_index (replicate pn nsz) (+) 0 (iota rem) (replicate rem 1)
@@ -165,14 +164,32 @@ def tree_from_values_upsweep [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : 
 
       in let tmp' = replicate pn (node_new())
 
-      in let newnodes = map3 (\i s (nn:node) ->
+      in let ptr_from_i64 (i:i64) : ptr =
+        if i < 0 then #null else #ptr i
+
+      -- TODO: This function makes incredibly redundant calculations, move this!
+      in let parent_idx (l: i64) : [pn]ptr =
+        if l == 0 then replicate pn #null else
+        let p2 = params[l-1]
+        in let p2n = p2.nodes
+        in let nsz2 = p2.keys / p2n
+        in let rem2 = p2.keys % p2n
+        in let szs2 = reduce_by_index (replicate p2n nsz2) (+) 0 (iota rem2) (replicate rem2 1) |> map (+1) :> [p2n]i64
+        -- if Σ szs2 != pn then we messed up
+
+        in let pidx = filter ((.1)>->((==)(layer-1))) <| zip (indices node_layermap) node_layermap |> map ((.0) >-> ptr_from_i64) :> [p2n]ptr
+        in let sidx = mk_depth_idx szs2 :> [pn]i64
+        in map (\i -> pidx[i]) sidx
+
+
+      in let parent_ptrs : [pn]ptr = parent_idx layer
+      in let newnodes = map4 (\i s (nn:node) p ->
         let kk = drop i aux |> take s
-        let parent = if layer == 0 then #null else #ptr 0
         in nn
           with keys   = scatter (copy nn.keys) (indices kk) kk
           with size   = s
-          with parent = parent
-      ) src_indices szs tmp'
+          with parent = p
+      ) src_indices szs tmp' parent_ptrs
 
       in let dst_idx = iota pn |> map (+(layeridx[layer]))
       in let next_kv_idx = (map2 (+) src_indices szs |> init)
@@ -185,8 +202,7 @@ def tree_from_values_upsweep [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : 
     in tree
 
 
-def merge_nodelist [n] [m] (dst : *[m]node) (nodes : [n][1]node) : [m]node =
-  let max_h = 0 in
+def merge_nodelist [n] [m] (dst : *[m]node) (_nodes : [n][1]node) : [m]node =
   copy dst
 
 def tree_from_nodelist [n] (nodes : [n]node) : []node =
