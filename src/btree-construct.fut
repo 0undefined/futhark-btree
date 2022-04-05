@@ -100,16 +100,16 @@ local def construct [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_
     in let (tree, _,_) = loop (res, aux, layer) = (dst, kv, (last params).depth)
     while layer >= 0 do
       -- Preliminary info about the current layer
-      let p = params[layer] |> trace
+      let p = params[layer]
       in let pn  = p.nodes     -- number of nodes
       in let nsz = p.keys / pn -- node size / number of keys in each node
       in let rem = p.keys % pn -- remaining keys that need to be distributed
 
-      in let szs = add_remainder pn nsz rem |> trace
-      in let child_szs = map (+1) szs |> trace
-      in let sum_childs = i64.sum child_szs |> trace
+      in let szs = add_remainder pn nsz rem
+      in let child_szs = map (+1) szs
+      in let sum_childs = i64.sum child_szs
 
-      in let child_indices = (rotate (-1) child_szs) with [0] = 0 |> trace
+      in let child_indices = (rotate (-1) child_szs) with [0] = 0
 
       in let src_indices = map2 (+)
                           (indices szs |> map (+1))
@@ -145,7 +145,7 @@ local def construct [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_
 
 
       in let parent_ptrs : [pn]ptr = parent_idx layer
-      in let child_ptrs  : [sum_childs]ptr = children_idx layer |> trace
+      in let child_ptrs  : [sum_childs]ptr = children_idx layer
 
       in let newnodes = map5 (\i s (nn:node) p ci ->
         let kk = aux[i:i+s] in
