@@ -3,13 +3,13 @@ open import "../lib/github.com/diku-dk/sorts/radix_sort"
 open import "types"
 open import "btree-misc"
 
-type layer_param = {depth: i64, remaining: i64, nodes: i64, keys: i64}
+local type layer_param = {depth: i64, remaining: i64, nodes: i64, keys: i64}
 
 -- start: 4^{x}*t
 -- end:   2*t^{x+1}-2
 -- t=5: Invalid ranges: 20-48,100-248,500-1248
 -- t=4: Invalid ranges: 16-30,64-126,256-510
-def invalid_range (n : i64) : bool =
+local def invalid_range (n : i64) : bool =
   if n < degree then false else
   let max = (i64.f64 <-< f64.ceil) (logt n) in
   any (\x -> (4**x)*degree <= n && n <= 2 * degree**(x+1) - 2) (1...max)
@@ -148,8 +148,8 @@ local def construct [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_
       in let child_ptrs  : [sum_childs]ptr = children_idx layer |> trace
 
       in let newnodes = map5 (\i s (nn:node) p ci ->
-        let kk = drop i aux |> take s in
-        let cc = take (s+1) (drop ci child_ptrs) in
+        let kk = aux[i:i+s] in
+        let cc = child_ptrs[ci:ci+s+1] in
         nn with keys   = scatter (copy nn.keys) (indices kk) kk
            with size   = s
            with parent = p
