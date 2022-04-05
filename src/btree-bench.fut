@@ -30,7 +30,5 @@ entry generic_kvpair (n: i64) : ([n]i64, [n]i64) =
 -- script input { generic_kvpair       100000i64 }
 -- script input { generic_kvpair      1000000i64 }
 -- script input { generic_kvpair     10000000i64 }
--- script input { generic_kvpair    100000000i64 }
--- script input { generic_kvpair   1000000000i64 }
 entry bench_val_to_tree [n] (keys: [n]i64) (vals: [n]i64) : i64 =
   construct_tree_from_sorted_keyvals keys vals |> length
