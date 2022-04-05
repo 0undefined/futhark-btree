@@ -135,31 +135,54 @@ def mk_depth_idx [m] (shape : [m]i64) =
   in scatter (replicate len 0) shape_scn flags |> scan (+) 0
 
 
+
 def tree_from_values_upsweep [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_param) =
-  let sizes  = map (.nodes) params in
-  let dst_sz = i64.sum sizes in
-  let dst    = replicate dst_sz (node_new ()) in
-  --loop ( aux , p , depth ) = ( dst , last params , h - 1) while depth >= 0 do
-  --  let remaining = p.1 in
-  --  let n_nodes = p.2 in
-  --  let n_items = p.3 in
+  let kv = zip ks vs
+  in if h <= 1 then
+    [node_new() with keys = kv
+                with size = n]
+  else
+    let sizes  = map (.nodes) params
+    let dst_sz = i64.sum sizes
+    let dst    = replicate dst_sz (node_new ())
+    --let layeridx = mk_depth_idx sizes
+    let layeridx = scan (+) 0 sizes |> rotate (-1) with [0] = 0
+    -- manually do the leaf nodes, loop over the rest
+    in let (tree, _,_) = loop (res, aux, layer) = (dst, kv, (last params).depth)
+    while layer >= 0 do
+    -------------------------------------
+      let p = params[layer] in
+      let pn  = p.nodes
+      in let nsz = p.keys / pn
+      in let rem = p.keys % pn
+      in let szs = reduce_by_index (replicate pn nsz) (+) 0 (iota rem) (replicate rem 1)
+      --in let tmp = indices szs |> map (+1)
+      in let src_indices = map2 (+)
+                          (indices szs |> map (+1))
+                          (scan (+) 0 szs)
+                      |> rotate (-1)
+                         with [0] = 0
 
-  --  let rem = n_items % n_nodes in
+      in let tmp' = replicate pn (node_new())
 
-  --  -- (1)
-  --  let node_szs' = replicate n_nodes (n_items / n_nodes) in
-  --  -- (2)
-  --  let node_szs  = map2 (\sz i -> if i < rem then sz + 1 else sz) node_szs' (indices node_szs') in
-  --  -- (3)
-  --  let idxs = iota (n / n_nodes) in
-  --  -- (4) -- HOW TO CALCULATE SPACING????
-  --  let spacing = 3 in
-  --  let offsets = map (*spacing) idxs in
+      in let newnodes = map3 (\i s (nn:node) ->
+        let kk = drop i aux |> take s
+        let parent = if layer == 0 then #null else #ptr 0
+        in nn
+          with keys   = scatter (copy nn.keys) (indices kk) kk
+          with size   = s
+          with parent = parent
+      ) src_indices szs tmp'
 
-  --  -- TODO: Fix for cases n != 5
+      in let dst_idx = iota pn |> map (+(layeridx[layer]))
+      in let next_kv_idx = (map2 (+) src_indices szs |> init)
+      in let next_kvs = map (\i -> aux[i]) next_kv_idx
 
-  -- -- (-1, depth - 1, h - 1)
-  []
+      in ( scatter (res) dst_idx newnodes
+         , next_kvs
+         , layer - 1)
+
+    in tree
 
 
 def merge_nodelist [n] [m] (dst : *[m]node) (nodes : [n][1]node) : [m]node =
