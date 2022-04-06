@@ -168,12 +168,12 @@ local def construct [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_
     in tree
 
 
-def construct_tree_from_sorted_keyvals [n] (ks : [n]i64) (vs: [n]datatype) : []node =
+entry construct_tree_from_sorted_keyvals [n] (ks : [n]i64) (vs: [n]datatype) : []node =
   let tree_params = analyze n
   in construct ks vs tree_params
 
 
-def construct_tree_from_keyvals [n] (ks : [n]i64) (vs: [n]datatype) : []node =
+entry construct_tree_from_keyvals [n] (ks : [n]i64) (vs: [n]datatype) : []node =
    let (sorted_k, sorted_v) =
      zip ks vs
      |> radix_sort_by_key (.0) (i64.num_bits) (i64.get_bit)
