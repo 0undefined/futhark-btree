@@ -15,10 +15,10 @@ build: $(LIBS)
 bench: bench-c bench-cuda
 
 bench-c: $(LIBS)
-	$(FUT) bench --backend=c src/btree-bench.fut
+	$(FUT) bench --runs=50 --backend=c src/btree-bench.fut
 
 bench-cuda: $(LIBS)
-	$(FUT) bench --backend=cuda src/btree-bench.fut
+	$(FUT) bench --runs=50 --backend=cuda src/btree-bench.fut
 
 test: $(LIBS)
 	$(FUT) test --concurrency=`nproc` src/btree-test.fut
