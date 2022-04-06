@@ -51,6 +51,7 @@ def node_new () : node =
   , children = newchildarr ()
   }
 
+
 -- Returns the rank (height) from a given node in the tree
 -- with i=0 returns the rank of the whole tree.
 def tree_rank [n] (tree : [n]node) (j : i64) : i64 =
@@ -62,8 +63,19 @@ def tree_rank [n] (tree : [n]node) (j : i64) : i64 =
                                        -- also, this case results in an infinite
                                        -- loop on purpose.
 
+
 -- Opaque to primitive type convertions
 def ptrval (p : ptr) : i64 =
   match p
   case #null  -> (-1)
   case #ptr q -> q
+
+
+-- returns a tuple of lists of the parameters of the nodes
+def tree_to_flat_representation [n] (tree : []node)
+                                  : ([]bool, []i64, []i64, [n]i64, [n]datatype, []i64) =
+    let params      = map (\p -> (p.leaf, p.size)) tree |> unzip
+    in let parents  = map ((.parent) >-> ptrval) tree
+    in let children = map (.children) tree |> flatten |> filter valid_ptr |> map ptrval
+    in let keys     = map (.keys) tree |> flatten |> filter valid_key |> unzip :> ([n]i64,[n]datatype)
+    in (params.0, params.1, parents, keys.0, keys.1, children)
