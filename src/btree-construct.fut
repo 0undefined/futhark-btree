@@ -9,7 +9,7 @@ local type layer_param = {depth: i64, remaining: i64, nodes: i64, keys: i64}
 -- end:   2*t^{x+1}-2
 -- t=5: Invalid ranges: 20-48,100-248,500-1248
 -- t=4: Invalid ranges: 16-30,64-126,256-510
-local def invalid_range (n : i64) : bool =
+def invalid_range (n : i64) : bool =
   if n < degree then false else
   let max = (i64.f64 <-< f64.ceil) (logt n) in
   any (\x -> (4**x)*degree <= n && n <= 2 * degree**(x+1) - 2) (1...max)
@@ -39,10 +39,18 @@ local def add_remainder (num_nodes : i64) (node_sz : i64) (remainder : i64) =
   reduce_by_index (replicate num_nodes node_sz) (+) 0 (iota remainder) (replicate remainder 1)
 
 
+local def mk_depth_idx [m] (shape : [m]i64) =
+  let flags     = replicate m 1i64 with [0] = 0
+  let shape_rot = rotate (-1) (copy shape) with [0] = 0
+  let shape_scn = scan (+) 0 shape_rot
+  let len       = last shape_scn + last shape
+  in scatter (replicate len 0) shape_scn flags |> scan (+) 0
+
+
 -- analyze phase guarantees h ≤ max_height n
 -- might require relaxation if
 --     (last result).keys / (last result).nodes < degree - 1
-local def analyze (n : i64) : []layer_param =
+def analyze (n : i64) : []layer_param =
   let rootlayer : layer_param = {depth = 0, remaining = n - 1, nodes = 1, keys = 1}
   in if n <= k then [rootlayer with keys = n]
   else
@@ -74,17 +82,9 @@ local def analyze (n : i64) : []layer_param =
     in take (h+1) result
 
 
-local def mk_depth_idx [m] (shape : [m]i64) =
-  let shape_rot = rotate (-1) (copy shape) with [0] = 0
-  let shape_scn = scan (+) 0 shape_rot
-  let flags     = map (\_->1i64) (iota m) with [0] = 0
-  let len       = last shape_scn + last shape
-  in scatter (replicate len 0) shape_scn flags |> scan (+) 0
-
-
 -- constructs a btree from a list of keys, values and b-tree parameters that
 -- describe the shape of the given B-Tree.
-local def construct [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_param) : []node =
+def construct [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_param) : []node =
   let kv = zip ks vs
   in if h <= 1 then
     let root = node_new() in
@@ -97,6 +97,12 @@ local def construct [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_
     let node_layermap = mk_depth_idx sizes
     let layeridx      = scan (+) 0 sizes |> rotate (-1) with [0] = 0
 
+    -------------------------------------
+    --TODO: GENERATE `szs` for all layers
+    --
+    -- (map ∘ replicate) (map .nodes params)
+    -------------------------------------
+
     in let (tree, _,_) = loop (res, aux, layer) = (dst, kv, (last params).depth)
     while layer >= 0 do
       -- Preliminary info about the current layer
@@ -106,6 +112,7 @@ local def construct [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_
       in let rem = p.keys % pn -- remaining keys that need to be distributed
 
       in let szs = add_remainder pn nsz rem
+
       in let child_szs = map (+1) szs
       in let sum_childs = i64.sum child_szs
 
@@ -116,8 +123,6 @@ local def construct [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_
                           (scan (+) 0 szs)
                       |> rotate (-1)
                          with [0] = 0
-
-      in let tmp' = replicate pn (node_new())
 
       -- TODO: This function makes incredibly redundant calculations, move this!
       in let parent_idx (l: i64) : [pn]ptr =
@@ -147,15 +152,16 @@ local def construct [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_
       in let parent_ptrs : [pn]ptr = parent_idx layer
       in let child_ptrs  : [sum_childs]ptr = children_idx layer
 
-      in let newnodes = map5 (\i s (nn:node) p ci ->
+      in let newnodes = map4 (\i s p ci ->
         let kk = aux[i:i+s] in
         let cc = child_ptrs[ci:ci+s+1] in
-        nn with keys   = scatter (copy nn.keys) (indices kk) kk
-           with size   = s
-           with parent = p
-           with leaf   = layer == h-1
-           with children = scatter (copy nn.children) (indices cc) cc
-      ) src_indices szs tmp' parent_ptrs child_indices
+          { leaf     = layer == h-1
+          , parent   = p
+          , size     = s
+          , keys     = scatter (newkeyarr())   (indices kk) kk
+          , children = scatter (newchildarr()) (indices cc) cc
+          }
+      ) src_indices szs parent_ptrs child_indices
 
       in let dst_idx = iota pn |> map (+(layeridx[layer]))
       in let next_kv_idx = (map2 (+) src_indices szs |> init)
@@ -166,16 +172,3 @@ local def construct [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_
          , layer - 1)
 
     in tree
-
-
-entry construct_tree_from_sorted_keyvals [n] (ks : [n]i64) (vs: [n]datatype) : []node =
-  let tree_params = analyze n
-  in construct ks vs tree_params
-
-
-entry construct_tree_from_keyvals [n] (ks : [n]i64) (vs: [n]datatype) : []node =
-   let (sorted_k, sorted_v) =
-     zip ks vs
-     |> radix_sort_by_key (.0) (i64.num_bits) (i64.get_bit)
-     |> unzip
-  in construct_tree_from_sorted_keyvals sorted_k sorted_v
