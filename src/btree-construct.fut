@@ -112,10 +112,11 @@ def construct [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_param)
 
       in let szs = add_remainder pn nsz rem
 
-      in let child_szs = map (+1) szs
+      in let child_szs  = map (+1) szs
       in let sum_childs = i64.sum child_szs
 
-      in let child_indices = (rotate (-1) child_szs) with [0] = 0
+      in let child_indices = ((rotate (-1) child_szs) with [0] = 0)
+                           |> scan (+) 0
 
       in let src_indices = map2 (+)
                           (indices szs |> map (+1))
