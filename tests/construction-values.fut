@@ -12,8 +12,6 @@ entry main (n : i64) : bool =
   let ks = iota n |> map (*3)
   let vs = map (+2) ks
   let tt = construct_tree_from_sorted_keyvals ks vs
-  let sr : [n]i64 = btree_search_idx tt ks |> map searchres_to_id
+  let sr : [n]i64 = btree_search_naive tt ks |> map searchres_to_id
   -- TODO: Make an interesting case
   in map2 (==) sr ks |> all id
-
-
