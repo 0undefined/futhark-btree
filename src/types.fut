@@ -32,7 +32,7 @@ type node = {
 
 -- Common predicates
 def valid_node : (node -> bool) = (.size) >-> (<=) (0)
-def valid_key  : (key  -> bool) = (.0)    >-> (!=) (-1)
+def valid_key  : (key  -> bool) = (.0)    >-> (!=) nilkey
 def valid_ptr  : (ptr  -> bool) = (!=) #null
 
 -- some constructors
