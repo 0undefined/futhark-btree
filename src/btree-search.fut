@@ -1,7 +1,7 @@
 open import "types"
 
 
---type btree_pred = key -> bool
+type search_result = #not_found | #result key
 
 local def prime_pred (p: key -> bool) : (key -> bool) = (\k -> valid_key k && p k)
 
@@ -13,9 +13,8 @@ def get_idxs_of [n] [m] (vals: [m]i64) (set: [n]i64) : [n]i64 =
   ) (indices set) set
 
 
--- returns (node_index,key_index) of nodes containing keys, -1 in both indices
--- if not found
-def btree_search_nodes [n] (p: key -> bool) (t : [n]node) : []key =
+-- Filter-style searching using a predicate
+def btree_filter [n] (p: key -> bool) (t : [n]node) : []key =
 
   if n == 0 then [] else
   -- start from the root node
@@ -32,7 +31,7 @@ def btree_search_nodes [n] (p: key -> bool) (t : [n]node) : []key =
       in (res ++ lr,nl)
   in result
 
-def btree_search_nodes_naive (p: key -> bool) (t: []node) : []key =
+def btree_filter_naive (p: key -> bool) (t: []node) : []key =
   map (.keys) t
   |> flatten
   |> filter (prime_pred p)
