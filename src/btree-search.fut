@@ -1,6 +1,10 @@
 open import "types"
 
 
+--type btree_pred = key -> bool
+
+local def prime_pred (p: key -> bool) : (key -> bool) = (\k -> valid_key k && p k)
+
 -- returns indices of `vals` in `set`
 def get_idxs_of [n] [m] (vals: [m]i64) (set: [n]i64) : [n]i64 =
   let foo k : bool = any ((==)k) vals
@@ -11,20 +15,24 @@ def get_idxs_of [n] [m] (vals: [m]i64) (set: [n]i64) : [n]i64 =
 
 -- returns (node_index,key_index) of nodes containing keys, -1 in both indices
 -- if not found
-entry btree_search_nodes [n] [m] (t : [n]node) (keys : [m]i64) : ([m]i64,[m]i64) =
-  let node_indices = replicate m (-1)
-  let key_indices  = replicate m (-1)
+def btree_search_nodes [n] (p: key -> bool) (t : [n]node) : []key =
 
-  in if n == 0 then (node_indices, key_indices) else
+  if n == 0 then [] else
   -- start from the root node
   let (result,_) =
     loop (res, aux) = ([], [head t])
     while !null aux do
       -- TODO: Actually use get_idxs_of to test wether or not we have found one
-      let nl = map (.children) aux
+      let lr = map (.keys) aux |> flatten |> filter (prime_pred p)
+      in let nl = map (.children) aux
               |> flatten
               |> filter valid_ptr
               |> map ptrval
               |> map (\i -> t[i])
-       in ([],nl)
-  in (node_indices,key_indices)
+      in (res ++ lr,nl)
+  in result
+
+def btree_search_nodes_naive (p: key -> bool) (t: []node) : []key =
+  map (.keys) t
+  |> flatten
+  |> filter (prime_pred p)
