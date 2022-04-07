@@ -94,7 +94,6 @@ def construct [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_param)
     let sizes         = map (.nodes) params
     let dst_sz        = i64.sum sizes
     let dst           = replicate dst_sz (node_new ())
-    let node_layermap = mk_depth_idx sizes
     let layeridx      = scan (+) 0 sizes |> rotate (-1) with [0] = 0
 
     -------------------------------------
