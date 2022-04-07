@@ -135,10 +135,7 @@ def construct [n] [h] (ks : [n]i64) (vs : [n]datatype) (params : [h]layer_param)
 
         -- if Σ szs2 != pn then we messed up
 
-        -- TODO: USE layeridx[layer-1] TO GET START OF PARENT LAYER AND THEN TAKE/DROP (OR MAP \i->a[i]) INDICES
-        in let pidx = filter ((.1) >-> ((==)(layer-1))) (zip (indices node_layermap) node_layermap)
-                    -- convert the node indices to pointers
-                    |> map   ((.0) >-> ptr_from_i64) :> [p2n]ptr
+        in let pidx = map (+layeridx[layer-1]) (iota sizes[layer-1]) |> map ptr_from_i64
         in let sidx = mk_depth_idx szs :> [pn]i64
         in map (\i -> pidx[i]) sidx
 
