@@ -1,55 +1,14 @@
 open import "btree"
 
 
-local def testing_nodelist (n : i64) : []node =
-  let ks = iota n
-  let vs = map (*2) ks
-  in node_list_from_keyvalues ks vs
-
-
 local def testing_tree (n: i64) : []node =
   let ks = iota n
   let vs = map (*2) ks
   in construct_tree_from_sorted_keyvals ks vs
 
 
-
--- Test node-list creation from array of values, size preservation
--- ==
--- entry:node_list_size_preservation
--- input {0i64}    output {0i64}
--- input {1i64}    output {1i64}
--- input {10i64}   output {10i64}
--- input {50i64}   output {50i64}
--- input {100i64}  output {100i64}
--- input {1024i64} output {1024i64}
-entry node_list_size_preservation (i : i64) : i64 =
-  map (.keys) (testing_nodelist i) |> flatten |> map (.0) |> filter ((!=)nilkey) |> length
-
-
--- Test node-list creation from array of values, value preservation
--- ==
--- entry:node_list_value_preservation
--- input {0i64}    output {true}
--- input {1i64}    output {true}
--- input {10i64}   output {true}
--- input {50i64}   output {true}
--- input {100i64}  output {true}
--- input {1024i64} output {true}
-entry node_list_value_preservation (i : i64) : bool =
-  -- Rely on the fact that testing_nodelist produces a value list following 2*i
-  let res = tabulate i (*2i64) in
-  let test = map (.keys) (testing_nodelist i) |>
-    flatten |>
-    map (.1) |>
-    filter ((!=)nil) :> ([i]i64) -- required as the compiler doesn't know that
-                                 -- our implementation works correctly
-                                 -- do _we_ even know it works correctly?
-  in all (\(r,t) -> r==t) (zip res test)
-
-
 -- Test that a tree preserves the properties of a B-Tree
-local def valid_nodes [n] (t : [n]node) : bool =
+local def valid_btree [n] (t : [n]node) : bool =
   -- test wether sizes are representative of the actual number of keys
   let test_attributes (m : node) : bool =
     -- Do `size` represent the actual number of keys?
@@ -101,4 +60,26 @@ local def valid_nodes [n] (t : [n]node) : bool =
 -- Be careful on the inputs! sizes of `n` that produces invalid btrees from the
 -- analyze step causes invalid b-trees to be produced.
 entry btree_construction_property_preservation (i : i64) : bool =
-  valid_nodes (testing_tree i)
+  valid_btree (testing_tree i)
+
+-- Test that all keys are still retrieveable after construction
+-- ==
+-- entry:btree_construction_value_preservation
+-- input {1i64}    output {true}
+-- input {10i64}   output {true}
+-- input {50i64}   output {true}
+-- input {2048i64} output {true}
+entry btree_construction_value_preservation (n : i64) : bool =
+  -- make the indexing a little more interesting than a plain `iota`, but still
+  -- make them sorted
+  let ks = iota n |> map (*3)
+  let vs = map (+2) ks
+  let tt = construct_tree_from_sorted_keyvals ks vs
+  let sr : [n]i64 = btree_search_idx tt ks |> map (\r ->
+    match r
+    case #not_found -> nilkey
+    case #result r  -> r.0
+  )
+  -- TODO: Make an interesting case
+  in map2 (==) sr ks |> all id
+  --
