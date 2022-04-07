@@ -7,14 +7,6 @@ local def testing_tree (n: i64) : []node =
   in construct_tree_from_sorted_keyvals ks vs
 
 
-local def searchres_to_id [n] (srs: [n]search_result) : [n]i64 =
-  map (\r ->
-    match r
-    case #not_found -> nilkey
-    case #result r  -> r.0
-  ) srs
-
-
 -- Test that a tree preserves the properties of a B-Tree
 local def valid_btree [n] (t : [n]node) : bool =
   -- test wether sizes are representative of the actual number of keys
@@ -70,44 +62,3 @@ local def valid_btree [n] (t : [n]node) : bool =
 entry test_construction_property_preservation (i : i64) : bool =
   valid_btree (testing_tree i)
 
--- Test that all keys are still retrieveable after construction
--- ==
--- entry:test_construction_value_preservation
--- input {1i64}    output {true}
--- input {10i64}   output {true}
--- input {50i64}   output {true}
--- input {600i64} output {true}
-entry test_construction_value_preservation (n : i64) : bool =
-  -- make the indexing a little more interesting than a plain `iota`, but still
-  -- make them sorted
-  let ks = iota n |> map (*3)
-  let vs = map (+2) ks
-  let tt = construct_tree_from_sorted_keyvals ks vs
-  let sr : [n]i64 = btree_search_idx tt ks |> searchres_to_id
-  -- TODO: Make an interesting case
-  in map2 (==) sr ks |> all id
-
--- All search functions should return the same
--- ==
--- entry:test_search_equivalence
--- input {1i64}    output {true}
--- input {10i64}   output {true}
--- input {50i64}   output {true}
-
--- input {600i64}  output {true}
--- input {2048i64} output {true}
--- input {4000i64} output {true}
-entry test_search_equivalence (n : i64) : bool =
-  -- make the indexing a little more interesting than a plain `iota`, but still
-  -- make them sorted
-  let ks = iota n |> map (*2)
-  let vs = map (+2) ks
-  let tt = construct_tree_from_sorted_keyvals ks vs
-  let sr_naive  : [n]i64 = btree_search_naive      tt ks |> searchres_to_id
-  let sr_naive2 : [n]i64 = btree_search_naive2     tt ks |> searchres_to_id
-  let sr_simple : [n]i64 = btree_search_idx_simple tt ks |> searchres_to_id
-  let sr        : [n]i64 = btree_search_idx        tt ks |> searchres_to_id
-  -- TODO: Make an interesting case
-  in map4 (\a b c d -> a == b && b == c && c == d) sr_naive sr_naive2 sr_simple sr
-     |> all id
-  --
