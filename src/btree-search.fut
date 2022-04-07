@@ -5,6 +5,11 @@ type search_result = #not_found | #result key
 
 local def prime_pred (p: key -> bool) : (key -> bool) = (\k -> valid_key k && p k)
 
+def searchres_to_id (sr: search_result) : i64 =
+  match sr
+  case #not_found -> nilkey
+  case #result r  -> r.0
+
 -- returns indices of `vals` in `set`
 def get_idxs_of [n] [m] (vals: [m]i64) (set: [n]i64) : [n]i64 =
   let foo k : bool = any ((==)k) vals
