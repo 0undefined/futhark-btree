@@ -64,7 +64,6 @@ def btree_search_idx [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
     -- "Layer-Keys"
     let lk = map (.keys) layer |> flatten :> [fl]key --- [ll*k]key
 
-    -- TODO: Get rid of filter, pred >-> bool |> scan (+) 0?
     let cmp (l: (i64,i64)) (r:(i64,i64)) : (i64,i64) =
       if l.1 > r.1 then
         l
@@ -72,6 +71,7 @@ def btree_search_idx [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
         if l.0 < l.0
         then l
         else r
+
     let lkk = map (.0) lk
 
     let min' = map ((<min) >-> i64.bool) lkk |> zip (indices lkk) |> reduce_comm cmp (-1,i64.lowest) |> (.0)
@@ -104,13 +104,19 @@ def btree_search_idx [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
     in let next_imm = scatter (copy imm) idx (map key_to_search_result res)
     -- TODO: use `next_imm` to map which children are desirable to traverse into
 
-    let children = map (.children) layer |> flatten
-    let childmin = if contained then 0      else ((localmin / k) * c + (localmin % k)) -- TODO: Fancy calculation
-    let childmax = if contained then (ll*c) else ((localmax / k) * c + (localmax % k))
+    let (localfrac,localrem) = (localmin / k, localmin % k)
+    let childmin = if contained then 0      else (localfrac * c + localrem)
+    let childmax = if contained then (ll*c) else (localfrac * c + localrem)
 
-    in let nl = filter valid_ptr children[childmin:childmax]
-        |> map ptrval
-        |> map (\i -> t[i])
+    let children = map (.children) layer |> flatten
+
+    let nl_flgs     = map (valid_ptr >-> i64.bool) children
+    let nl_flgs_scn = scan (+) 0 nl_flgs
+    let nl_ptr_idx = map2 (\f i -> if f == 1 then i else -1) nl_flgs nl_flgs_scn
+
+    let nl_res = replicate (i64.sum nl_flgs) (-1) -- ballsy, i know
+    let nl_ptr = scatter nl_res nl_ptr_idx (map ptrval children)
+    in let nl = map (\i -> t[i]) nl_ptr
 
     in (next_imm, nl)
 
