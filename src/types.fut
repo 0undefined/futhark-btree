@@ -1,9 +1,14 @@
--- constant parameters
+-------------------------
+-- constant parameters --
+-------------------------
+
+-- adapt as needed
 type datatype = i64
 def nil : datatype = (-1)
 
 def nilkey : i64 = -1
 def degree : i64 = 4   -- aka. `t` in CLRS
+
 
 -- All nodes (except the root node) must contain a number of k keys
 --   such that  t - 1 ≤ k ≤ 2t - 1.
@@ -12,8 +17,13 @@ def degree : i64 = 4   -- aka. `t` in CLRS
 def k : i64 = degree * 2 - 1
 def c : i64 = degree * 2
 
+----------------------
+-- Type definitions --
+----------------------
 type ptr = #null | #ptr i64
 type key = (i64, datatype)
+
+type search_result = #not_found | #result key
 
 -- leaf: Indicates wether or not there's children to this node.
 -- size: Number of keys in the node.
@@ -30,14 +40,17 @@ type node = {
   children: [c]ptr
 }
 
+
 -- Common predicates
 def valid_node : (node -> bool) = (.size) >-> (<=) (0)
 def valid_key  : (key  -> bool) = (.0)    >-> (!=) nilkey
 def valid_ptr  : (ptr  -> bool) = (!=) #null
 
--- some constructors
+
+-- some useless constructors
 def newchildarr () : *[c]ptr = replicate c #null
 def newkeyarr   () : *[k]key = replicate k nil |> zip <| replicate k nilkey
+
 
 def ptr_from_i64 (i: i64) : ptr =
   if i < 0 then #null else #ptr i
@@ -69,6 +82,12 @@ def ptrval (p : ptr) : i64 =
   match p
   case #null  -> (-1)
   case #ptr q -> q
+
+
+def searchres_to_id (sr: search_result) : i64 =
+  match sr
+  case #not_found -> nilkey
+  case #result r  -> r.0
 
 
 -- returns a tuple of lists of the parameters of the nodes

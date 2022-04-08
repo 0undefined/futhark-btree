@@ -1,14 +1,17 @@
 open import "types"
 
 
-type search_result = #not_found | #result key
-
 local def prime_pred (p: key -> bool) : (key -> bool) = (\k -> valid_key k && p k)
 
-def searchres_to_id (sr: search_result) : i64 =
-  match sr
-  case #not_found -> nilkey
-  case #result r  -> r.0
+
+local def merge_immediate_results [n] (lhs: [n](i64,key)) (rhs: [n](i64,key)) : [n](i64,key) =
+  -- idea, use scatter instead?
+  map2 (\l r -> if l.0 != -1 then l else r) lhs rhs
+
+
+local def key_to_search_result (k: key) : search_result =
+  if valid_key k then #result k else #not_found
+
 
 -- returns indices of `vals` in `set`
 def get_idxs_of [n] [m] (vals: [m]i64) (set: [n]i64) : [n]i64 =
@@ -41,15 +44,6 @@ def btree_filter_naive (p: key -> bool) (t: []node) : []key =
   |> filter (prime_pred p)
 
 
-local def merge_immediate_results [n] (lhs: [n](i64,key)) (rhs: [n](i64,key)) : [n](i64,key) =
-  -- idea, use scatter instead?
-  map2 (\l r -> if l.0 != -1 then l else r) lhs rhs
-
-
-local def key_to_search_result (k: key) : search_result =
-  if valid_key k then #result k else #not_found
-
-
 def btree_search_idx [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
   let min = head ks
   let max = last ks
@@ -64,6 +58,8 @@ def btree_search_idx [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
     -- "Layer-Keys"
     let lk = map (.keys) layer |> flatten :> [fl]key --- [ll*k]key
 
+    -- Pick l if the value is larger, or the index is smaller, otherwise return r
+    -- Consider l and right of (index,value)
     let cmp (l: (i64,i64)) (r:(i64,i64)) : (i64,i64) =
       if l.1 > r.1 then
         l
@@ -72,22 +68,17 @@ def btree_search_idx [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
         then l
         else r
 
+    -- just the keys, since they are the ones we're comparing
     let lkk = map (.0) lk
     let lkid = indices lkk
 
-    let min'   = map (\k -> i64.bool (k != nilkey && k<min)) lkk |> zip lkid |> reduce_comm cmp (-1,i64.lowest) |> (.0)
-    let maxtmp = map ((>max) >-> i64.bool) lkk |> zip lkid |> reverse |> reduce_comm cmp (-1,i64.lowest) |> (.0) |> (-) fl |> (+) 1
-    let max' = if maxtmp < 0 then fl+1 else maxtmp
+    -- There must be a smarter way than using the indices
+    let min' = map ((<min) >-> i64.bool) lkk |> zip lkid |> reduce_comm cmp (-1,i64.lowest) |> (.0)
+    let max' = map ((>max) >-> i64.bool) lkk |> zip lkid |> reverse |> reduce_comm cmp (-1,i64.lowest) |> (.0) |> (-) fl |> (+) 1
 
     let contained = (min' < 0) && (fl < max')
-    let localmin = (if contained then 0  else if min' <= 0   then (head lkid) else lkid[min'])
-    let localmax = (
-      if contained then
-        fl else
-      if max' >= fl then
-        (last lkid)
-      else lkid[max']
-    )
+    let localmin = (if contained then 0  else if min' <= 0  then (head lkid) else lkid[min'])
+    let localmax = (if contained then fl else if max' >= fl then (last lkid) else lkid[max'])
 
     let subslice = lk[localmin:localmax]
 
@@ -104,32 +95,31 @@ def btree_search_idx [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
       |> unzip
 
     in let next_imm = scatter (copy imm) idx (map key_to_search_result res)
-    -- TODO: use `next_imm` to map which children are desirable to traverse into
+
+    -- TODO: Optimization oportunity:
+    -- * iteratively update `min` and `max` from the keys that are already found
+    -- * use `next_imm` to map which children are desirable to traverse into
+    -- The latter should be more desirable but much harder to implement
 
     let (localfrac,localrem) = (localmin / k, localmin % k)
-    let childmin = if contained then 0      else (localfrac * c + localrem) |> trace
-    let childmax = if contained then (ll*c) else (localfrac * c + localrem) |> trace
+    let childmin = if contained then 0      else (localfrac * c + localrem)
+    let childmax = if contained then (ll*c) else (localfrac * c + localrem)
 
     let children = (map (.children) layer |> flatten)[childmin:childmax]
 
     -- Filter the children
     let nl_flgs     = map (valid_ptr >-> i64.bool) children
     let nl_flgs_scn = scan (+) 0 nl_flgs |> map ((+)(-1))
-    let nl_ptr_idx = map2 (\f i -> if f == 1 then i else -1) nl_flgs nl_flgs_scn
+    let nl_ptr_idx  = map2 (\f i -> if f == 1 then i else -1) nl_flgs nl_flgs_scn
 
     let nl_len = i64.sum nl_flgs
-    --                                                    -- using -1, ballsy, i know
+    --                                                    -- using -1, ballsy, i know, but i dont make mistakes, like any regular C-Programmer
     let nl_ptr : [nl_len]i64 = scatter (replicate nl_len (-1)) nl_ptr_idx (map ptrval children)
     in let nl = map (\i -> t[i]) nl_ptr
 
     in (next_imm, nl)
 
   in result
---  let n = 1i64
---- let kk = iota n
---- let vv = map (+2) kk
---- let tt = construct_tree_from_sorted_keyvals kk vv
---- btree_search_idx tt kk
 
 
 def btree_search_idx_simple [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
@@ -173,7 +163,7 @@ def btree_search_idx_simple [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result
 -- btree_search_naive uses a filter whereas btree_search_naive2 uses a
 -- combination of map and scatter
 
-entry btree_search_naive [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
+def btree_search_naive [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
   let kk = map (.keys) t |> flatten
   in map (\k ->
     let r = filter ((.0) >-> (==)k) kk
@@ -181,7 +171,7 @@ entry btree_search_naive [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
     else #not_found
   ) ks
 
-entry btree_search_naive2 [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
+def btree_search_naive2 [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
   let result : [m]search_result = replicate m (#not_found)
   let layer = map (.keys) t |> flatten --- [d*k]
 
