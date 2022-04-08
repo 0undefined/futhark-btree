@@ -72,7 +72,9 @@ def btree_search_idx [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
     let lkk = map (.0) lk
     let lkid = indices lkk
 
-    -- There must be a smarter way than using the indices
+    -- map out which keys are <min and >max and get
+    -- min' = the largest key-index of the keys that are <min
+    -- max' = the smallest key-index of the keys that are >max
     let min' = map ((<min) >-> i64.bool) lkk |> zip lkid |> reduce_comm cmp (-1,i64.lowest) |> (.0)
     let max' = map ((>max) >-> i64.bool) lkk |> zip lkid |> reverse |> reduce_comm cmp (-1,i64.lowest) |> (.0) |> (-) fl |> (+) 1
 
@@ -101,9 +103,10 @@ def btree_search_idx [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
     -- * use `next_imm` to map which children are desirable to traverse into
     -- The latter should be more desirable but much harder to implement
 
-    let (localfrac,localrem) = (localmin / k, localmin % k)
-    let childmin = if contained then 0      else (localfrac * c + localrem)
-    let childmax = if contained then (ll*c) else (localfrac * c + localrem)
+    let (localfrac_min,localrem_min) = (localmin / k, localmin % k)
+    let (localfrac_max,localrem_max) = (localmax / k, localmax % k)
+    let childmin = if contained then 0      else (localfrac_min * c + localrem_min)
+    let childmax = if contained then (ll*c) else (localfrac_max * c + localrem_max)
 
     let children = (map (.children) layer |> flatten)[childmin:childmax]
 
@@ -145,7 +148,6 @@ def btree_search_idx_simple [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result
 
     in let resres = map key_to_search_result res
 
-    -- TODO: Update this nonsense
     in let nl = map (.children) layer
         |> flatten
         |> filter valid_ptr
