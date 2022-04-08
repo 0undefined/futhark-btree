@@ -64,29 +64,27 @@ def btree_search_idx [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
     -- "Layer-Keys"
     let lk = map (.keys) layer |> flatten :> [fl]key --- [ll*k]key
 
-    -- "Filtered-Layer-Keys"
-    let flk = filter ((.1) >-> valid_key) (zip (indices lk) lk)
-    -- "Filtered-Layer-Keys-Ids"
-    let lki = map (\(i,k) -> (i,k.0))  flk
-    -- "Numberof-Filtered-Layer-Keys"
-    let nflk = length flk
+    -- TODO: Get rid of filter, pred >-> bool |> scan (+) 0?
+    let cmp (l: (i64,i64)) (r:(i64,i64)) : (i64,i64) =
+      if l.1 > r.1 then
+        l
+      else
+        if l.0 < l.0
+        then l
+        else r
+    let lkk = map (.0) lk
 
-    -- Assume keys in the tree are sorted
-    -- Get the largest key smaller than `min`
-    let min' = (map ((.1) >-> (<min) >-> i64.bool) lki |> i64.sum |> (+) (-1))
-    -- Get the smallest key larger than `max`
-    let max' = (map ((.1) >-> (>max) >-> i64.bool) lki |> i64.sum |> (-) nflk |> (+) 1)
+    let min' = map ((<min) >-> i64.bool) lkk |> zip (indices lkk) |> reduce_comm cmp (-1,i64.lowest) |> (.0)
+    let max' = map ((>max) >-> i64.bool) lkk |> zip (indices lkk) |> reverse |> reduce_comm cmp (-1,i64.lowest) |> (.0) |> (+) 1
 
-
-
-    let contained = (min' < 0) && (nflk < max')
-    let localmin = (if contained then 0  else if min' <= 0   then (head lki).0 else lki[min'].0)
+    let contained = (min' < 0) && (fl < max')
+    let localmin = (if contained then 0  else if min' <= 0   then (head lkk) else lkk[min'])
     let localmax = (
       if contained then
         fl else
-      if max' >= nflk then
-        (last lki).0
-      else lki[max'].0
+      if max' >= fl then
+        (last lkk)
+      else lkk[max']
     )
 
     let subslice = lk[localmin:localmax]
