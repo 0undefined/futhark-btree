@@ -72,22 +72,22 @@ def btree_search_idx [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
         then l
         else r
 
-    let lkk = map (.0) lk |> trace
+    let lkk = map (.0) lk
     let lkid = indices lkk
 
-    let min'   = map (\k -> i64.bool (k != nilkey && k<min)) lkk |> zip lkid |> reduce_comm cmp (-1,i64.lowest) |> (.0) |> trace
-    let maxtmp = map ((>max) >-> i64.bool) lkk |> zip lkid |> reverse |> reduce_comm cmp (-1,i64.lowest) |> (.0) |> (-) fl |> (+) 1 |> trace
+    let min'   = map (\k -> i64.bool (k != nilkey && k<min)) lkk |> zip lkid |> reduce_comm cmp (-1,i64.lowest) |> (.0)
+    let maxtmp = map ((>max) >-> i64.bool) lkk |> zip lkid |> reverse |> reduce_comm cmp (-1,i64.lowest) |> (.0) |> (-) fl |> (+) 1
     let max' = if maxtmp < 0 then fl+1 else maxtmp
 
-    let contained = (min' < 0) && (fl < max') |> trace
-    let localmin = (if contained then 0  else if min' <= 0   then (head lkid) else lkid[min']) |> trace
+    let contained = (min' < 0) && (fl < max')
+    let localmin = (if contained then 0  else if min' <= 0   then (head lkid) else lkid[min'])
     let localmax = (
       if contained then
         fl else
       if max' >= fl then
         (last lkid)
       else lkid[max']
-    ) |> trace
+    )
 
     let subslice = lk[localmin:localmax]
 
