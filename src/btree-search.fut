@@ -68,24 +68,26 @@ def btree_search_idx [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
       if l.1 > r.1 then
         l
       else
-        if l.0 < l.0
+        if l.0 < r.0
         then l
         else r
 
-    let lkk = map (.0) lk
+    let lkk = map (.0) lk |> trace
+    let lkid = indices lkk
 
-    let min' = map ((<min) >-> i64.bool) lkk |> zip (indices lkk) |> reduce_comm cmp (-1,i64.lowest) |> (.0)
-    let max' = map ((>max) >-> i64.bool) lkk |> zip (indices lkk) |> reverse |> reduce_comm cmp (-1,i64.lowest) |> (.0) |> (+) 1
+    let min'   = map (\k -> i64.bool (k != nilkey && k<min)) lkk |> zip lkid |> reduce_comm cmp (-1,i64.lowest) |> (.0) |> trace
+    let maxtmp = map ((>max) >-> i64.bool) lkk |> zip lkid |> reverse |> reduce_comm cmp (-1,i64.lowest) |> (.0) |> (-) fl |> (+) 1 |> trace
+    let max' = if maxtmp < 0 then fl+1 else maxtmp
 
-    let contained = (min' < 0) && (fl < max')
-    let localmin = (if contained then 0  else if min' <= 0   then (head lkk) else lkk[min'])
+    let contained = (min' < 0) && (fl < max') |> trace
+    let localmin = (if contained then 0  else if min' <= 0   then (head lkid) else lkid[min']) |> trace
     let localmax = (
       if contained then
         fl else
       if max' >= fl then
-        (last lkk)
-      else lkk[max']
-    )
+        (last lkid)
+      else lkid[max']
+    ) |> trace
 
     let subslice = lk[localmin:localmax]
 
@@ -105,22 +107,29 @@ def btree_search_idx [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
     -- TODO: use `next_imm` to map which children are desirable to traverse into
 
     let (localfrac,localrem) = (localmin / k, localmin % k)
-    let childmin = if contained then 0      else (localfrac * c + localrem)
-    let childmax = if contained then (ll*c) else (localfrac * c + localrem)
+    let childmin = if contained then 0      else (localfrac * c + localrem) |> trace
+    let childmax = if contained then (ll*c) else (localfrac * c + localrem) |> trace
 
-    let children = map (.children) layer |> flatten
+    let children = (map (.children) layer |> flatten)[childmin:childmax]
 
+    -- Filter the children
     let nl_flgs     = map (valid_ptr >-> i64.bool) children
     let nl_flgs_scn = scan (+) 0 nl_flgs |> map ((+)(-1))
     let nl_ptr_idx = map2 (\f i -> if f == 1 then i else -1) nl_flgs nl_flgs_scn
 
-    let nl_res = replicate (i64.sum nl_flgs) (-1) -- ballsy, i know
-    let nl_ptr = scatter nl_res nl_ptr_idx (map ptrval children)
+    let nl_len = i64.sum nl_flgs
+    --                                                    -- using -1, ballsy, i know
+    let nl_ptr : [nl_len]i64 = scatter (replicate nl_len (-1)) nl_ptr_idx (map ptrval children)
     in let nl = map (\i -> t[i]) nl_ptr
 
     in (next_imm, nl)
 
   in result
+--  let n = 1i64
+--- let kk = iota n
+--- let vv = map (+2) kk
+--- let tt = construct_tree_from_sorted_keyvals kk vv
+--- btree_search_idx tt kk
 
 
 def btree_search_idx_simple [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
