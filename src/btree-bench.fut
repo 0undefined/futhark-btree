@@ -9,10 +9,13 @@ entry generic_kvpair (n: i64) : ([n]i64, [n]i64) =
 
 entry generic_tree (n: i64) (k: i64) : ([]node, [k]i64) =
   let (keys,vals) = generic_kvpair n
-  let ks = map (*4) (iota k)
+  let ks = map (*4) (iota k) |> map (+((n/2)-(k/2)))
   in
   (construct_tree_from_sorted_keyvals keys vals, ks)
 
+entry generic_tree_with_keyspace_outside (n: i64) (k: i64) : ([]node, [k]i64) =
+  let (tt,ks) = generic_tree n k
+  in (tt, map (+n) ks)
 
 -- The input size was generated with
 --   tabulate 11 (\i -> 4**(2 + i))
@@ -42,6 +45,8 @@ entry bench_val_to_tree [n] (keys: [n]i64) (vals: [n]i64) : i64 =
 -- script input { generic_tree     8192i64  256i64 }
 -- script input { generic_tree     8192i64  512i64 }
 -- script input { generic_tree     8192i64 1024i64 }
+-- script input { generic_tree     8192i64 1536i64 }
+-- script input { generic_tree     8192i64 2048i64 }
 
 -- Compare speed with different tree sizes
 -- ==
@@ -63,3 +68,10 @@ entry bench_search_opt (t: []node) (k: []i64) =
 
 entry bench_search_naive (t: []node) (k: []i64) =
   btree_search_naive t k
+
+
+entry bench_search_outside_opt (t: []node) (k: []i64) =
+  btree_search_idx t k
+
+entry bench_search_outside_basic (t: []node) (k: []i64) =
+  btree_search_idx_simple t k
