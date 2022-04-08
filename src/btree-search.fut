@@ -111,7 +111,7 @@ def btree_search_idx [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
     let children = map (.children) layer |> flatten
 
     let nl_flgs     = map (valid_ptr >-> i64.bool) children
-    let nl_flgs_scn = scan (+) 0 nl_flgs
+    let nl_flgs_scn = scan (+) 0 nl_flgs |> map ((+)(-1))
     let nl_ptr_idx = map2 (\f i -> if f == 1 then i else -1) nl_flgs nl_flgs_scn
 
     let nl_res = replicate (i64.sum nl_flgs) (-1) -- ballsy, i know
