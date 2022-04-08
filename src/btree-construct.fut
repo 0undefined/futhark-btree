@@ -25,15 +25,6 @@ local def layer_param_nil : layer_param =
   {depth = -1i64, remaining = -1i64, nodes = -1i64, keys = -1i64}
 
 
-local def relax [h] (params : [h](i64, i64, i64, i64)) : [](i64, i64, i64, i64) =
-  let leaf_layer_param = last params
-  -- if |items| / |nodes| < degree in the last layer, we must "relax" the params a bit
-  in if leaf_layer_param.3 / leaf_layer_param.2 < degree then
-    [] -- TODO: Find out how to "relax"
-  else
-    params
-
-
 -- adds +1 to the first `rem` node sizes
 local def add_remainder (num_nodes : i64) (node_sz : i64) (remainder : i64) =
   reduce_by_index (replicate num_nodes node_sz) (+) 0 (iota remainder) (replicate remainder 1)
@@ -62,7 +53,7 @@ def analyze (n : i64) : []layer_param =
     while layer.remaining > 0 && layer.depth < max_height do
 
       let nodes = layer.nodes + layer.keys in
-      let (node_sz, remainder) = --if layer.remaining / nodes < k then
+      let (node_sz, remainder) =
         if (i64.f64 <-< f64.ceil) (f64.i64 layer.remaining / f64.i64 nodes) <= k then
         (layer.remaining / nodes, layer.remaining % nodes)
       else

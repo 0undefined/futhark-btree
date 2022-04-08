@@ -44,6 +44,7 @@ def btree_filter_naive (p: key -> bool) (t: []node) : []key =
   |> filter (prime_pred p)
 
 
+-- space efficient method for bulk searches
 def btree_search_idx [n] [m] (t: [n]node) (ks: [m]i64) : [m]search_result =
   let min = head ks
   let max = last ks
