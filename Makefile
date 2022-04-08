@@ -30,7 +30,10 @@ bench-opencl: $(LIBS)
 	$(FUT) bench --runs=50 --backend=opencl $(BENCHPROG)
 
 test: $(LIBS)
-	$(FUT) test --concurrency=`nproc` src/btree-test.fut
+	$(FUT) test --exclude=slow --concurrency=`nproc` tests/*.fut
+
+test-full: $(LIBS)
+	$(FUT) test --concurrency=`nproc` tests/*.fut
 
 
 $(LIBS): futhark.pkg
