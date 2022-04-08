@@ -6,9 +6,10 @@ open import "../src/btree"
 -- input {1i64}    output {true}
 -- input {10i64}   output {true}
 -- input {50i64}   output {true}
+-- input {150i64}  output {true}
+-- input {200i64}  output {true}
+-- input {550i64}  output {true}
 -- input {600i64}  output {true}
--- input {2048i64} output {true}
--- input {4000i64} output {true}
 entry main (n : i64) : bool =
   -- make the indexing a little more interesting than a plain `iota`, but still
   -- make them sorted
