@@ -18,3 +18,13 @@ In this we also explore how to represent recursive datastructures as a flat
 array in a language without recursion, as well as writing high-level performant
 code in a pure language with respect to low-level architectural properties such
 as thread divergence and cache coalescence.
+
+
+What works
+----------
+
+* [x] Creation from a dataset
+* [x] Searching
+* [ ] Insertion
+* [ ] Deletion
+* [ ] Updating
